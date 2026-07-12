@@ -4,3 +4,5 @@ dist/
 .pio/
 compile_commands.json
 .DS_Store
+apps/api/data/
+apps/firmware/include/secrets.h
