@@ -1,0 +1,10 @@
+{
+  "name": "personal-esp32-deskboard",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter api dev"
+  }
+}

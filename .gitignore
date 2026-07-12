@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.venv/
+.pio/
+compile_commands.json
+.DS_Store
