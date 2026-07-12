@@ -1,6 +1,7 @@
 #include "ui.h"
 
 #include "page_monitor.h"
+#include "page_schedule.h"
 
 #include <lvgl.h>
 
@@ -15,6 +16,7 @@ struct TabDef
 };
 
 static const TabDef tabs[] = {
+    {LV_SYMBOL_LIST, page_schedule_build, page_schedule_set_active},
     {LV_SYMBOL_CHARGE, page_monitor_build, page_monitor_set_active},
 };
 static constexpr size_t tab_count = sizeof(tabs) / sizeof(tabs[0]);
