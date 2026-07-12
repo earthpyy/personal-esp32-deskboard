@@ -2,6 +2,7 @@
 #include <esp32_smartdisplay.h>
 
 #include "hw_stats.h"
+#include "net/net.h"
 #include "ui/ui.h"
 
 void setup()
@@ -12,6 +13,7 @@ void setup()
   smartdisplay_lcd_set_backlight(0.75f);
 
   hw_stats_init();
+  net_init();
   ui_init();
 }
 
