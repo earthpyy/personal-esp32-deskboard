@@ -3,6 +3,7 @@
 
 #include "hw_stats.h"
 #include "net/net.h"
+#include "net/schedule_client.h"
 #include "ui/ui.h"
 
 void setup()
@@ -14,6 +15,7 @@ void setup()
 
   hw_stats_init();
   net_init();
+  schedule_client_init();
   ui_init();
 }
 
