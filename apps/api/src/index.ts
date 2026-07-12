@@ -22,11 +22,10 @@ function redirectUriFrom(request: Request): string {
 
 const app = new Elysia({ adapter: node() })
   .get('/health', () => ({ status: 'ok' }))
-  .get('/schedule', ({ request, server }) => {
+  .get('/schedule', ({ request }) => {
     boardStatus.lastPollAt = Date.now()
-    boardStatus.lastPollIp =
-      (server as { requestIP?: (r: Request) => { address: string } | null } | null)
-        ?.requestIP?.(request)?.address
+    // the board reports its own IP; the node adapter can't see the socket address
+    boardStatus.lastPollIp = request.headers.get('x-board-ip')
       ?? request.headers.get('x-forwarded-for')
       ?? 'unknown'
     return getSchedule()

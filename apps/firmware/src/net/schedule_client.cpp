@@ -7,8 +7,11 @@
 #include <HTTPClient.h>
 #include <secrets.h>
 
+// heap-allocated in init: three ~5 KB ScheduleData instances live across the
+// firmware, and as statics they overflow the ESP32's dram0 .bss segment
 static SemaphoreHandle_t data_mutex;
-static ScheduleData shared;
+static ScheduleData *shared;
+static ScheduleData *scratch;
 static bool fresh = false;
 static volatile uint32_t last_success_ms = 0;
 
@@ -30,6 +33,7 @@ static bool fetch(ScheduleData *out)
   http.setTimeout(10000);
   if (!http.begin(String(API_BASE_URL) + "/schedule"))
     return false;
+  http.addHeader("X-Board-IP", net_ip_str());
   auto const code = http.GET();
   if (code != HTTP_CODE_OK)
   {
@@ -80,16 +84,15 @@ static bool fetch(ScheduleData *out)
 
 static void fetch_task(void *)
 {
-  static ScheduleData scratch;
   for (;;)
   {
     bool ok = false;
     if (net_connected())
-      ok = fetch(&scratch);
+      ok = fetch(scratch);
     if (ok)
     {
       xSemaphoreTake(data_mutex, portMAX_DELAY);
-      shared = scratch;
+      *shared = *scratch;
       fresh = true;
       xSemaphoreGive(data_mutex);
       last_success_ms = millis();
@@ -102,6 +105,8 @@ static void fetch_task(void *)
 
 void schedule_client_init()
 {
+  shared = new ScheduleData();
+  scratch = new ScheduleData();
   data_mutex = xSemaphoreCreateMutex();
   // core 0: LVGL + the Arduino loop own core 1
   xTaskCreatePinnedToCore(fetch_task, "sched_fetch", 12288, nullptr, 1, nullptr, 0);
@@ -113,7 +118,7 @@ bool schedule_client_take_fresh(ScheduleData *out)
   xSemaphoreTake(data_mutex, portMAX_DELAY);
   if (fresh)
   {
-    *out = shared;
+    *out = *shared;
     fresh = false;
     got = true;
   }

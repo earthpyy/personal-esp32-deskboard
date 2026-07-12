@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include <secrets.h>
 
-static ScheduleData data;
+static ScheduleData *data; // heap-allocated in build (dram0 .bss is full)
 static bool has_data = false;
 
 static lv_obj_t *date_label;
@@ -36,21 +36,21 @@ static void set_hidden(lv_obj_t *obj, bool hidden)
 // index of the current event, else the next upcoming, else the last one; -1 if none
 static int focus_index(int64_t now)
 {
-  for (int i = 0; i < data.event_count; i++)
-    if (data.events[i].end > now)
+  for (int i = 0; i < data->event_count; i++)
+    if (data->events[i].end > now)
       return i;
-  return data.event_count > 0 ? data.event_count - 1 : -1;
+  return data->event_count > 0 ? data->event_count - 1 : -1;
 }
 
 static void restyle(bool force_scroll)
 {
   if (!has_data)
     return;
-  auto const now = schedule_client_now(&data);
+  auto const now = schedule_client_now(data);
   int past_count = 0;
-  for (int i = 0; i < data.event_count; i++)
+  for (int i = 0; i < data->event_count; i++)
   {
-    auto const &ev = data.events[i];
+    auto const &ev = data->events[i];
     auto const past = ev.end <= now;
     auto const current = ev.start <= now && now < ev.end;
     if (past)
@@ -70,9 +70,9 @@ static void restyle(bool force_scroll)
 static void rebuild()
 {
   lv_obj_clean(allday_row);
-  for (int i = 0; i < data.all_day_count; i++)
+  for (int i = 0; i < data->all_day_count; i++)
   {
-    auto const &ad = data.all_day[i];
+    auto const &ad = data->all_day[i];
     auto chip = lv_obj_create(allday_row);
     lv_obj_set_size(chip, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_hor(chip, 8, 0);
@@ -88,16 +88,16 @@ static void rebuild()
     lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
     lv_obj_set_style_max_width(label, 140, 0);
   }
-  set_hidden(allday_row, data.all_day_count == 0 || debug_forced);
+  set_hidden(allday_row, data->all_day_count == 0 || debug_forced);
 
   // wipe cards but keep the now-line object: re-parent it out, clean, re-add
   lv_obj_set_parent(now_line, lv_obj_get_parent(list));
   lv_obj_clean(list);
   lv_obj_set_parent(now_line, list);
 
-  for (int i = 0; i < data.event_count; i++)
+  for (int i = 0; i < data->event_count; i++)
   {
-    auto const &ev = data.events[i];
+    auto const &ev = data->events[i];
     auto card = lv_obj_create(list);
     lv_obj_set_size(card, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(card, 8, 0);
@@ -131,14 +131,14 @@ static void rebuild()
   }
   // move the line to the front; restyle() will place it correctly
   lv_obj_move_to_index(now_line, 0);
-  set_hidden(now_line, data.event_count == 0);
+  set_hidden(now_line, data->event_count == 0);
 
   empty_label = lv_label_create(list);
   lv_label_set_text(empty_label, "No events today");
   lv_obj_set_style_text_opa(empty_label, LV_OPA_60, 0);
-  set_hidden(empty_label, data.event_count > 0 || data.all_day_count > 0 || debug_forced);
+  set_hidden(empty_label, data->event_count > 0 || data->all_day_count > 0 || debug_forced);
 
-  lv_label_set_text(date_label, data.date_label);
+  lv_label_set_text(date_label, data->date_label);
   last_focus = -1; // force scroll re-evaluation
 }
 
@@ -170,7 +170,7 @@ static void update_stale()
   if (stale)
   {
     auto label = lv_obj_get_child(stale_btn, 0);
-    lv_label_set_text_fmt(label, LV_SYMBOL_WARNING " as of %s", data.now_label);
+    lv_label_set_text_fmt(label, LV_SYMBOL_WARNING " as of %s", data->now_label);
   }
   else if (debug_forced && has_data)
   {
@@ -186,7 +186,7 @@ static void stale_clicked_cb(lv_event_t *e)
 
 static void tick_cb(lv_timer_t *timer)
 {
-  if (schedule_client_take_fresh(&data))
+  if (schedule_client_take_fresh(data))
   {
     has_data = true;
     rebuild();
@@ -203,6 +203,8 @@ static void tick_cb(lv_timer_t *timer)
 
 void page_schedule_build(lv_obj_t *parent)
 {
+  data = new ScheduleData();
+
   lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(parent, 4, 0);
   lv_obj_set_style_pad_row(parent, 4, 0);
