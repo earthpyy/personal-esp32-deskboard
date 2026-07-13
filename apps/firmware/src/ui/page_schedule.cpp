@@ -4,6 +4,7 @@
 #include "../net/schedule_client.h"
 
 #include <Arduino.h>
+#include <esp_random.h>
 #include <secrets.h>
 
 static ScheduleData *data; // heap-allocated in build (dram0 .bss is full)
@@ -17,13 +18,31 @@ static lv_obj_t *now_line;
 static lv_obj_t *debug_panel;
 static lv_obj_t *debug_label;
 static lv_obj_t *empty_label;
+static lv_obj_t *done_label; // end-of-day message once every event has ended
 static lv_obj_t *cards[SCHEDULE_MAX_EVENTS];
 static lv_timer_t *tick_timer;
 static int last_focus = -1;
+static int done_phrase = -1; // index into DONE_PHRASES; -1 = message hidden
 static bool debug_forced = false;
 static uint32_t tick_count = 0;
 
 static constexpr uint32_t STALE_AFTER_MS = 3 * 60 * 1000;
+
+// Shown at the bottom of the list when the whole day is done. One is picked at
+// random when the message appears and kept stable until it hides / a new day.
+static const char *DONE_PHRASES[] = {
+    "That's it for today!",
+    "Enjoy the rest of your day!",
+    "All done for today!",
+    "You're all caught up!",
+    "Nothing left on the books!",
+    "That's a wrap!",
+    "The rest of the day is yours!",
+    "Nice work today!",
+    "Time to unwind!",
+    "No more meetings ahead!",
+};
+static constexpr int DONE_PHRASE_COUNT = sizeof(DONE_PHRASES) / sizeof(DONE_PHRASES[0]);
 
 static void set_hidden(lv_obj_t *obj, bool hidden)
 {
@@ -61,8 +80,32 @@ static void restyle(bool force_scroll)
   // now-line sits after the last past card (cards precede it after rebuild)
   lv_obj_move_to_index(now_line, past_count);
 
+  // every event has ended once nothing sits past the now-line
+  auto const all_past = data->event_count > 0 && past_count == data->event_count;
+  auto just_appeared = false;
+  if (all_past)
+  {
+    if (done_phrase < 0)
+    {
+      done_phrase = (int)(esp_random() % DONE_PHRASE_COUNT);
+      lv_label_set_text(done_label, DONE_PHRASES[done_phrase]);
+      just_appeared = true;
+    }
+    lv_obj_move_to_index(done_label, past_count + 1); // right below the now-line
+  }
+  else
+  {
+    done_phrase = -1; // reset so a fresh phrase is drawn next time
+  }
+  set_hidden(done_label, !all_past);
+
   auto const focus = focus_index(now);
-  if (focus >= 0 && (force_scroll || focus != last_focus))
+  if (all_past)
+  {
+    if (force_scroll || just_appeared)
+      lv_obj_scroll_to_view(done_label, LV_ANIM_ON);
+  }
+  else if (focus >= 0 && (force_scroll || focus != last_focus))
     lv_obj_scroll_to_view(cards[focus], LV_ANIM_ON);
   last_focus = focus;
 }
@@ -90,10 +133,14 @@ static void rebuild()
   }
   set_hidden(allday_row, data->all_day_count == 0 || debug_forced);
 
-  // wipe cards but keep the now-line object: re-parent it out, clean, re-add
-  lv_obj_set_parent(now_line, lv_obj_get_parent(list));
+  // wipe cards but keep the now-line and done-message objects (they hold state):
+  // re-parent them out, clean, re-add
+  auto const list_parent = lv_obj_get_parent(list);
+  lv_obj_set_parent(now_line, list_parent);
+  lv_obj_set_parent(done_label, list_parent);
   lv_obj_clean(list);
   lv_obj_set_parent(now_line, list);
+  lv_obj_set_parent(done_label, list);
 
   for (int i = 0; i < data->event_count; i++)
   {
@@ -262,6 +309,13 @@ void page_schedule_build(lv_obj_t *parent)
   lv_label_set_text(empty_label, "No events today");
   lv_obj_set_style_text_opa(empty_label, LV_OPA_60, 0);
   lv_obj_add_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
+
+  done_label = lv_label_create(list);
+  lv_obj_set_width(done_label, lv_pct(100));
+  lv_obj_set_style_text_align(done_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_opa(done_label, LV_OPA_60, 0);
+  lv_obj_set_style_pad_top(done_label, 6, 0);
+  lv_obj_add_flag(done_label, LV_OBJ_FLAG_HIDDEN);
 
   debug_panel = lv_obj_create(parent);
   lv_obj_set_width(debug_panel, lv_pct(100));
