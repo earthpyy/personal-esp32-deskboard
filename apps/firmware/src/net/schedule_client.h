@@ -8,7 +8,7 @@ constexpr size_t SCHEDULE_MAX_ALL_DAY = 10;
 
 struct ScheduleEvent
 {
-  char title[64];
+  char title[128];
   char time_label[24];
   char calendar[32];
   uint32_t color;
@@ -18,7 +18,7 @@ struct ScheduleEvent
 
 struct ScheduleAllDay
 {
-  char title[64];
+  char title[128];
   char calendar[32];
   uint32_t color;
 };

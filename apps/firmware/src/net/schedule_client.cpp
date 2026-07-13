@@ -27,6 +27,26 @@ static void copy_str(char *dst, size_t cap, const char *src)
   strlcpy(dst, src != nullptr ? src : "", cap);
 }
 
+// like copy_str, but marks a too-long title with a trailing "..." instead of
+// silently cutting it. trims on a UTF-8 boundary so multi-byte (Thai) glyphs
+// are never split into tofu.
+static void copy_title(char *dst, size_t cap, const char *src)
+{
+  if (src == nullptr)
+    src = "";
+  size_t const len = strlen(src);
+  if (len < cap) // fits with its NUL, no trimming needed
+  {
+    memcpy(dst, src, len + 1);
+    return;
+  }
+  size_t keep = cap - 4; // leave room for "..." + NUL
+  while (keep > 0 && (static_cast<unsigned char>(src[keep]) & 0xC0) == 0x80)
+    keep--; // back off a continuation byte so we don't split a code point
+  memcpy(dst, src, keep);
+  memcpy(dst + keep, "...", 4); // copies the trailing NUL too
+}
+
 static bool fetch(ScheduleData *out)
 {
   HTTPClient http;
@@ -61,7 +81,7 @@ static bool fetch(ScheduleData *out)
     if (out->all_day_count >= SCHEDULE_MAX_ALL_DAY)
       break;
     auto &slot = out->all_day[out->all_day_count++];
-    copy_str(slot.title, sizeof(slot.title), ev["title"]);
+    copy_title(slot.title, sizeof(slot.title), ev["title"]);
     copy_str(slot.calendar, sizeof(slot.calendar), ev["calendar"]);
     slot.color = parse_color(ev["color"]);
   }
@@ -72,7 +92,7 @@ static bool fetch(ScheduleData *out)
     if (out->event_count >= SCHEDULE_MAX_EVENTS)
       break;
     auto &slot = out->events[out->event_count++];
-    copy_str(slot.title, sizeof(slot.title), ev["title"]);
+    copy_title(slot.title, sizeof(slot.title), ev["title"]);
     copy_str(slot.time_label, sizeof(slot.time_label), ev["time"]);
     copy_str(slot.calendar, sizeof(slot.calendar), ev["calendar"]);
     slot.color = parse_color(ev["color"]);

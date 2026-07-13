@@ -10,6 +10,16 @@ type OAuth2Client = InstanceType<typeof google.auth.OAuth2>
 // blocks); the board only wants actual events, so drop them at fetch time
 const HIDDEN_EVENT_TYPES = new Set(['workingLocation', 'outOfOffice', 'focusTime'])
 
+// the board's fonts (Noto Thai + Montserrat fallback) have no emoji glyphs, so
+// any emoji in a title renders as tofu — strip them (plus the modifiers/joiners
+// that decorate them) server-side and tidy up the whitespace they leave behind
+const EMOJI_RE =
+  /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u{FE0F}\u{20E3}\u{200D}]/gu
+
+function stripEmoji(s: string): string {
+  return s.replace(EMOJI_RE, '').replace(/\s+/g, ' ').trim()
+}
+
 export const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -84,7 +94,7 @@ export async function fetchAccountEvents(
         if (ev.eventType && HIDDEN_EVENT_TYPES.has(ev.eventType)) continue
         const self = ev.attendees?.find((a) => a.self)
         events.push({
-          title: ev.summary ?? '(untitled)',
+          title: (ev.summary ? stripEmoji(ev.summary) : '') || '(untitled)',
           start: { dateTime: ev.start?.dateTime ?? undefined, date: ev.start?.date ?? undefined },
           end: { dateTime: ev.end?.dateTime ?? undefined, date: ev.end?.date ?? undefined },
           declined: self?.responseStatus === 'declined',
