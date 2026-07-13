@@ -5,6 +5,7 @@
 #include "net/claude_client.h"
 #include "net/net.h"
 #include "net/schedule_client.h"
+#include "ui/touch_calibration.h"
 #include "ui/ui.h"
 
 void setup()
@@ -13,6 +14,12 @@ void setup()
   smartdisplay_init();
   lv_display_set_rotation(lv_display_get_default(), LV_DISPLAY_ROTATION_270);
   smartdisplay_lcd_set_backlight(0.75f);
+
+  // Apply stored touch calibration; run the interactive flow on first boot
+  // (nothing stored) or when BOOT is pressed during the startup window.
+  bool have_calibration = touch_calibration_load();
+  if (!have_calibration || touch_calibration_prompt())
+    touch_calibration_run();
 
   hw_stats_init();
   net_init();
