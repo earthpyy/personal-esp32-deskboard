@@ -5,19 +5,26 @@
 
 #include <lvgl.h>
 
-// Adding a tab = one entry here (icon + build + optional set_active; use
-// nullptr for pages without per-activation behavior). Note: LVGL's symbol
-// font has no chart glyph, so Monitoring uses LV_SYMBOL_CHARGE.
+// FontAwesome "calendar" (U+F073); the built-in symbol font lacks it, so it
+// ships as a one-glyph font (src/ui/font_calendar.c) applied to the tab label.
+LV_FONT_DECLARE(font_calendar);
+#define ICON_CALENDAR "\xEF\x81\xB3"
+
+// Adding a tab = one entry here (icon + optional icon_font + build + optional
+// set_active; use nullptr for the default symbol font / no per-activation
+// behavior). Note: LVGL's symbol font has no chart glyph, so Monitoring uses
+// LV_SYMBOL_CHARGE.
 struct TabDef
 {
   const char *icon;
+  const lv_font_t *icon_font; // nullptr = default symbol font
   void (*build)(lv_obj_t *parent);
   void (*set_active)(bool active);
 };
 
 static const TabDef tabs[] = {
-    {LV_SYMBOL_LIST, page_schedule_build, page_schedule_set_active},
-    {LV_SYMBOL_CHARGE, page_monitor_build, page_monitor_set_active},
+    {ICON_CALENDAR, &font_calendar, page_schedule_build, page_schedule_set_active},
+    {LV_SYMBOL_CHARGE, nullptr, page_monitor_build, page_monitor_set_active},
 };
 static constexpr size_t tab_count = sizeof(tabs) / sizeof(tabs[0]);
 
@@ -43,6 +50,12 @@ void ui_init()
   {
     auto content = lv_tabview_add_tab(tabview, tabs[i].icon);
     tabs[i].build(content);
+    if (tabs[i].icon_font != nullptr)
+    {
+      // tab bar button -> its label (child 0); give it the custom icon font
+      auto button = lv_obj_get_child(lv_tabview_get_tab_bar(tabview), i);
+      lv_obj_set_style_text_font(lv_obj_get_child(button, 0), tabs[i].icon_font, 0);
+    }
   }
 
   lv_obj_add_event_cb(tabview, tab_changed_cb, LV_EVENT_VALUE_CHANGED, nullptr);
