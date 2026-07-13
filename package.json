@@ -10,6 +10,10 @@
     "build:admin": "pnpm --filter admin build",
     "build:api": "pnpm --filter api build",
     "build": "pnpm build:admin && pnpm build:api",
-    "start": "pnpm build && pnpm --filter api start"
+    "start": "pnpm build && pnpm --filter api start",
+    "service:install": "node scripts/service.mjs install",
+    "service:uninstall": "node scripts/service.mjs uninstall",
+    "service:restart": "node scripts/service.mjs restart",
+    "service:status": "node scripts/service.mjs status"
   }
 }
