@@ -134,13 +134,11 @@ static void rebuild()
   set_hidden(allday_row, data->all_day_count == 0 || debug_forced);
 
   // wipe cards but keep the now-line and done-message objects (they hold state):
-  // re-parent them out, clean, re-add
+  // re-parent them out, clean, then re-add *after* the cards below
   auto const list_parent = lv_obj_get_parent(list);
   lv_obj_set_parent(now_line, list_parent);
   lv_obj_set_parent(done_label, list_parent);
   lv_obj_clean(list);
-  lv_obj_set_parent(now_line, list);
-  lv_obj_set_parent(done_label, list);
 
   for (int i = 0; i < data->event_count; i++)
   {
@@ -176,6 +174,13 @@ static void rebuild()
 
     cards[i] = card;
   }
+
+  // Bring the stateful objects back in *after* the cards so the cards occupy the
+  // leading child indices 0..N-1. restyle() positions the now-line purely by
+  // past-card count, so anything ahead of the cards would offset it.
+  lv_obj_set_parent(now_line, list);
+  lv_obj_set_parent(done_label, list);
+
   // move the line to the front; restyle() will place it correctly
   lv_obj_move_to_index(now_line, 0);
   set_hidden(now_line, data->event_count == 0);
