@@ -21,6 +21,11 @@ export interface ScheduleEvent extends ScheduleAllDay {
   end: number
 }
 
+export interface LunchConfig {
+  start: string // "HH:MM" local time
+  end: string // "HH:MM" local time
+}
+
 export interface Schedule {
   now: number
   now_label: string
@@ -28,6 +33,9 @@ export interface Schedule {
   warnings: number
   all_day: ScheduleAllDay[]
   events: ScheduleEvent[]
+  // a subtle "lunch break" divider the board draws at `start` (epoch seconds),
+  // shown only when the configured window is free of timed events
+  lunch: { show: boolean; start: number }
 }
 
 export const MAX_TIMED = 30
@@ -35,10 +43,21 @@ export const MAX_ALL_DAY = 10
 
 const DAY_MS = 24 * 3600 * 1000
 
+// minutes past local midnight for a "HH:MM" string, or null if malformed
+function parseHhmm(s: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s?.trim() ?? '')
+  if (!m) return null
+  const h = Number(m[1])
+  const min = Number(m[2])
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
 export function buildSchedule(
   sources: { events: SourceEvent[]; failed?: boolean }[],
   timezone: string,
   nowMs: number,
+  lunch?: LunchConfig | null,
 ): Schedule {
   const dayStart = startOfDay(nowMs, timezone)
   const dayEnd = dayStart + DAY_MS
@@ -75,12 +94,29 @@ export function buildSchedule(
 
   timed.sort((a, b) => a.start - b.start || a.end - b.end)
 
+  const shown = timed.slice(0, MAX_TIMED)
+
+  // lunch divider: only when enabled, the window is valid, at least one timed
+  // event exists, and nothing overlaps [start, end) — i.e. lunch is actually free
+  let lunchShow = false
+  let lunchStartSec = 0
+  const lunchStartMin = lunch ? parseHhmm(lunch.start) : null
+  const lunchEndMin = lunch ? parseHhmm(lunch.end) : null
+  if (lunchStartMin != null && lunchEndMin != null && lunchEndMin > lunchStartMin) {
+    const lunchStartMs = dayStart + lunchStartMin * 60_000
+    const lunchEndMs = dayStart + lunchEndMin * 60_000
+    const occupied = shown.some((e) => e.start * 1000 < lunchEndMs && e.end * 1000 > lunchStartMs)
+    lunchShow = shown.length > 0 && !occupied
+    lunchStartSec = Math.floor(lunchStartMs / 1000)
+  }
+
   return {
     now: Math.floor(nowMs / 1000),
     now_label: hhmm(nowMs, timezone),
     date: dateLabel(nowMs, timezone),
     warnings: sources.filter((s) => s.failed).length,
     all_day: allDay.slice(0, MAX_ALL_DAY),
-    events: timed.slice(0, MAX_TIMED),
+    events: shown,
+    lunch: { show: lunchShow, start: lunchStartSec },
   }
 }

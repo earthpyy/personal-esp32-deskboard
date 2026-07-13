@@ -135,6 +135,9 @@ const app = new Elysia({ adapter: node() })
       timezone: t.String(),
       cacheTtlMinutes: t.Number({ minimum: 1 }),
       claudeCacheTtlMinutes: t.Number({ minimum: 1 }),
+      lunchEnabled: t.Boolean(),
+      lunchStart: t.String(),
+      lunchEnd: t.String(),
     })),
   })
   .get('/api/board-status', () => boardStatus)

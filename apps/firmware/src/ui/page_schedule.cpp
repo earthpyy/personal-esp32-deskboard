@@ -7,6 +7,10 @@
 #include <esp_random.h>
 #include <secrets.h>
 
+// one-glyph fork/knife icon for the lunch divider (src/ui/font_lunch.c)
+LV_FONT_DECLARE(font_lunch);
+#define LUNCH_GLYPH "\xEF\x83\xB5" // fa-cutlery U+F0F5
+
 static ScheduleData *data; // heap-allocated in build (dram0 .bss is full)
 static bool has_data = false;
 
@@ -15,6 +19,7 @@ static lv_obj_t *stale_btn; // warning icon + "as of HH:MM"
 static lv_obj_t *allday_row;
 static lv_obj_t *list;
 static lv_obj_t *now_line;
+static lv_obj_t *lunch_line; // "lunch break" divider at the free lunch slot
 static lv_obj_t *debug_panel;
 static lv_obj_t *debug_label;
 static lv_obj_t *empty_label;
@@ -77,8 +82,47 @@ static void restyle(bool force_scroll)
     lv_obj_set_style_opa(cards[i], past ? LV_OPA_50 : LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(cards[i], current ? 2 : 0, 0);
   }
-  // now-line sits after the last past card (cards precede it after rebuild)
-  lv_obj_move_to_index(now_line, past_count);
+  // Place the time markers among the cards. Every non-card child sits at the
+  // tail, so an index <= event_count counts only cards before it. Park the
+  // markers first to normalize their start positions, then move them in
+  // ascending index order so an earlier insert isn't shifted by a later one.
+  bool const lunch_on = data->lunch_show && data->event_count > 0;
+  int lunch_cards = 0; // cards that start before the lunch window
+  if (lunch_on)
+    for (int i = 0; i < data->event_count; i++)
+      if (data->events[i].start < data->lunch_start)
+        lunch_cards++;
+
+  // when the now-line and lunch divider fall on the same card boundary, order
+  // them by clock time so the divider reads correctly relative to "now"
+  bool const lunch_first = lunch_on
+      && (lunch_cards < past_count
+          || (lunch_cards == past_count && data->lunch_start <= now));
+  int const now_idx = past_count + (lunch_first ? 1 : 0);
+  int const lunch_idx = lunch_cards + (lunch_on && !lunch_first ? 1 : 0);
+
+  auto const park = [](lv_obj_t *o) {
+    lv_obj_move_to_index(o, lv_obj_get_child_count(list) - 1);
+  };
+  park(now_line);
+  park(lunch_line);
+  park(done_label);
+
+  if (lunch_on && lunch_first)
+  {
+    lv_obj_move_to_index(lunch_line, lunch_idx);
+    lv_obj_move_to_index(now_line, now_idx);
+  }
+  else if (lunch_on)
+  {
+    lv_obj_move_to_index(now_line, now_idx);
+    lv_obj_move_to_index(lunch_line, lunch_idx);
+  }
+  else
+  {
+    lv_obj_move_to_index(now_line, now_idx);
+  }
+  set_hidden(lunch_line, !lunch_on);
 
   // every event has ended once nothing sits past the now-line
   auto const all_past = data->event_count > 0 && past_count == data->event_count;
@@ -91,7 +135,7 @@ static void restyle(bool force_scroll)
       lv_label_set_text(done_label, DONE_PHRASES[done_phrase]);
       just_appeared = true;
     }
-    lv_obj_move_to_index(done_label, past_count + 1); // right below the now-line
+    lv_obj_move_to_index(done_label, now_idx + 1); // right below the now-line
   }
   else
   {
@@ -137,6 +181,7 @@ static void rebuild()
   // re-parent them out, clean, then re-add *after* the cards below
   auto const list_parent = lv_obj_get_parent(list);
   lv_obj_set_parent(now_line, list_parent);
+  lv_obj_set_parent(lunch_line, list_parent);
   lv_obj_set_parent(done_label, list_parent);
   lv_obj_clean(list);
 
@@ -179,6 +224,7 @@ static void rebuild()
   // leading child indices 0..N-1. restyle() positions the now-line purely by
   // past-card count, so anything ahead of the cards would offset it.
   lv_obj_set_parent(now_line, list);
+  lv_obj_set_parent(lunch_line, list);
   lv_obj_set_parent(done_label, list);
 
   // move the line to the front; restyle() will place it correctly
@@ -347,6 +393,45 @@ void page_schedule_build(lv_obj_t *parent)
   lv_obj_set_style_text_opa(done_label, LV_OPA_60, 0);
   lv_obj_set_style_pad_top(done_label, 6, 0);
   lv_obj_add_flag(done_label, LV_OBJ_FLAG_HIDDEN);
+
+  // lunch divider: faint rules flanking a fork/knife glyph + "Lunch break";
+  // restyle() positions it at the free lunch slot and toggles its visibility
+  lunch_line = lv_obj_create(list);
+  lv_obj_set_width(lunch_line, lv_pct(100));
+  lv_obj_set_height(lunch_line, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(lunch_line, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(lunch_line, 0, 0);
+  lv_obj_set_style_pad_all(lunch_line, 0, 0);
+  lv_obj_set_style_pad_column(lunch_line, 6, 0);
+  lv_obj_set_flex_flow(lunch_line, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(lunch_line, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_remove_flag(lunch_line, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(lunch_line, LV_OBJ_FLAG_HIDDEN);
+
+  for (int side = 0; side < 2; side++)
+  {
+    auto rule = lv_obj_create(lunch_line);
+    lv_obj_set_height(rule, 1);
+    lv_obj_set_flex_grow(rule, 1);
+    lv_obj_set_style_bg_color(rule, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_bg_opa(rule, LV_OPA_40, 0);
+    lv_obj_set_style_border_width(rule, 0, 0);
+    lv_obj_set_style_radius(rule, 0, 0);
+    lv_obj_set_style_pad_all(rule, 0, 0);
+    lv_obj_remove_flag(rule, LV_OBJ_FLAG_SCROLLABLE);
+    if (side == 0) // insert the icon + label between the two rules
+    {
+      auto icon = lv_label_create(lunch_line);
+      lv_label_set_text(icon, LUNCH_GLYPH);
+      lv_obj_set_style_text_font(icon, &font_lunch, 0);
+      lv_obj_set_style_text_color(icon, lv_color_hex(0x888888), 0);
+
+      auto text = lv_label_create(lunch_line);
+      lv_label_set_text(text, "Lunch break");
+      lv_obj_set_style_text_font(text, &lv_font_montserrat_10, 0);
+      lv_obj_set_style_text_color(text, lv_color_hex(0x888888), 0);
+    }
+  }
 
   debug_panel = lv_obj_create(parent);
   lv_obj_set_width(debug_panel, lv_pct(100));

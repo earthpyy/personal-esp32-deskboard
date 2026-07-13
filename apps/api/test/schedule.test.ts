@@ -68,6 +68,45 @@ test('clamps multi-day timed events to today and drops non-overlapping ones', ()
   assert.equal(s.events[0].start, Date.parse('2026-07-13T00:00:00+07:00') / 1000)
 })
 
+const LUNCH = { start: '12:00', end: '13:00' }
+
+test('lunch divider shows when the window is free', () => {
+  const s = buildSchedule([{
+    events: [
+      timed('morning', '2026-07-13T09:00:00+07:00', '2026-07-13T10:00:00+07:00'),
+      timed('afternoon', '2026-07-13T14:00:00+07:00', '2026-07-13T15:00:00+07:00'),
+    ],
+  }], TZ, NOW, LUNCH)
+  assert.equal(s.lunch.show, true)
+  assert.equal(s.lunch.start, Date.parse('2026-07-13T12:00:00+07:00') / 1000)
+})
+
+test('lunch divider hides when an event overlaps the window', () => {
+  const s = buildSchedule([{
+    events: [timed('lunch mtg', '2026-07-13T12:30:00+07:00', '2026-07-13T13:30:00+07:00')],
+  }], TZ, NOW, LUNCH)
+  assert.equal(s.lunch.show, false)
+})
+
+test('lunch divider hides with no timed events or when disabled', () => {
+  const empty = buildSchedule([{ events: [] }], TZ, NOW, LUNCH)
+  assert.equal(empty.lunch.show, false)
+  const disabled = buildSchedule([{
+    events: [timed('m', '2026-07-13T09:00:00+07:00', '2026-07-13T10:00:00+07:00')],
+  }], TZ, NOW, null)
+  assert.equal(disabled.lunch.show, false)
+})
+
+test('events touching the lunch boundary do not block it', () => {
+  const s = buildSchedule([{
+    events: [
+      timed('ends at noon', '2026-07-13T11:00:00+07:00', '2026-07-13T12:00:00+07:00'),
+      timed('starts at 1', '2026-07-13T13:00:00+07:00', '2026-07-13T14:00:00+07:00'),
+    ],
+  }], TZ, NOW, LUNCH)
+  assert.equal(s.lunch.show, true)
+})
+
 test('caps output and counts failed accounts in warnings', () => {
   const many = Array.from({ length: 40 }, (_, i) =>
     timed(`e${i}`, `2026-07-13T0${i % 8}:0${i % 6}:00+07:00`, '2026-07-13T09:00:00+07:00'))

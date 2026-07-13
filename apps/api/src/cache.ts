@@ -16,7 +16,7 @@ let lastSync: SyncResult | null = null
 // with the current time: the board anchors its clock to `now`, so it must
 // never be stale. Refetches on TTL expiry or day rollover.
 export async function getSchedule(force = false): Promise<Schedule> {
-  const { timezone, cacheTtlMinutes } = getSettings()
+  const { timezone, cacheTtlMinutes, lunchEnabled, lunchStart, lunchEnd } = getSettings()
   const nowMs = Date.now()
   const dayStart = startOfDay(nowMs, timezone)
   const expired = !cached
@@ -38,6 +38,7 @@ export async function getSchedule(force = false): Promise<Schedule> {
     cached!.results.map((r) => ({ events: r.events, failed: Boolean(r.error) })),
     timezone,
     nowMs,
+    lunchEnabled ? { start: lunchStart, end: lunchEnd } : null,
   )
 }
 

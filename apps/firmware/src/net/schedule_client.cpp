@@ -99,6 +99,9 @@ static bool fetch(ScheduleData *out)
     slot.start = ev["start"].as<long long>();
     slot.end = ev["end"].as<long long>();
   }
+
+  out->lunch_show = doc["lunch"]["show"].as<bool>();
+  out->lunch_start = doc["lunch"]["start"].as<long long>();
   return true;
 }
 

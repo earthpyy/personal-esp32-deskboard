@@ -31,6 +31,8 @@ struct ScheduleData
   uint8_t all_day_count;
   ScheduleEvent events[SCHEDULE_MAX_EVENTS];
   uint8_t event_count;
+  bool lunch_show;      // draw the "lunch break" divider (server says lunch is free)
+  int64_t lunch_start;  // epoch seconds of the lunch window start; divider sits here
   int64_t server_now;   // epoch seconds when the server answered
   uint32_t received_ms; // millis() when we got it; clock anchor
 };
