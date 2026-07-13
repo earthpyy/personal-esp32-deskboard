@@ -298,12 +298,38 @@ void page_schedule_build(lv_obj_t *parent)
   lv_obj_set_style_border_width(list, 0, 0);
   lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
 
+  // now-line: a "now" pill on the left with a thin red rule filling the rest
   now_line = lv_obj_create(list);
-  lv_obj_set_size(now_line, lv_pct(100), 2);
-  lv_obj_set_style_bg_color(now_line, lv_palette_main(LV_PALETTE_RED), 0);
+  lv_obj_set_width(now_line, lv_pct(100));
+  lv_obj_set_height(now_line, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(now_line, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(now_line, 0, 0);
-  lv_obj_set_style_radius(now_line, 1, 0);
+  lv_obj_set_style_pad_all(now_line, 0, 0);
+  lv_obj_set_flex_flow(now_line, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(now_line, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_remove_flag(now_line, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(now_line, LV_OBJ_FLAG_HIDDEN);
+
+  auto now_badge = lv_label_create(now_line);
+  lv_label_set_text(now_badge, "now");
+  lv_obj_set_style_text_font(now_badge, &noto_thai_12, 0);
+  lv_obj_set_style_text_color(now_badge, lv_color_white(), 0);
+  lv_obj_set_style_bg_color(now_badge, lv_palette_main(LV_PALETTE_RED), 0);
+  lv_obj_set_style_bg_opa(now_badge, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_hor(now_badge, 6, 0);
+  lv_obj_set_style_pad_ver(now_badge, 1, 0);
+  lv_obj_set_style_radius(now_badge, LV_RADIUS_CIRCLE, 0);
+
+  auto now_rule = lv_obj_create(now_line);
+  lv_obj_set_height(now_rule, 2);
+  lv_obj_set_flex_grow(now_rule, 1);
+  lv_obj_set_style_bg_color(now_rule, lv_palette_main(LV_PALETTE_RED), 0);
+  lv_obj_set_style_bg_opa(now_rule, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(now_rule, 0, 0);
+  lv_obj_set_style_radius(now_rule, 1, 0);
+  lv_obj_set_style_pad_all(now_rule, 0, 0);
+  lv_obj_set_style_margin_left(now_rule, 4, 0);
+  lv_obj_remove_flag(now_rule, LV_OBJ_FLAG_SCROLLABLE);
 
   empty_label = lv_label_create(list);
   lv_label_set_text(empty_label, "No events today");
