@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { node } from '@elysiajs/node'
-import { staticPlugin } from '@elysiajs/static'
 import { Elysia, file, redirect, t } from 'elysia'
 import { deleteAccount, listAccounts, saveAccount } from './accounts.js'
 import { accountCalendarCounts, getSchedule, lastSyncResult } from './cache.js'
@@ -78,10 +77,14 @@ const app = new Elysia({ adapter: node() })
     fs.existsSync(adminIndex)
       ? file(adminIndex)
       : new Response('Admin UI not built. Run: pnpm --filter admin build', { status: 503 }))
-
-if (fs.existsSync(adminDist)) {
-  app.use(staticPlugin({ assets: adminDist, prefix: '/admin' }))
-}
+  // serve built assets via file(), which sets Content-Type; @elysiajs/static
+  // returns an empty MIME on the node adapter and browsers reject the module
+  .get('/admin/*', ({ params }) => {
+    const target = path.resolve(adminDist, params['*'])
+    if (!target.startsWith(adminDist + path.sep) || !fs.existsSync(target))
+      return new Response('Not found', { status: 404 })
+    return file(target)
+  })
 
 app.listen(3000, ({ hostname, port }) => {
   console.log(`API running at http://${hostname}:${port}`)
