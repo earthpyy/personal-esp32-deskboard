@@ -83,7 +83,7 @@ static void rebuild()
     lv_obj_remove_flag(chip, LV_OBJ_FLAG_SCROLLABLE);
     auto label = lv_label_create(chip);
     lv_label_set_text(label, ad.title);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(label, &noto_thai_12, 0);
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
     lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
     lv_obj_set_style_max_width(label, 140, 0);
@@ -124,7 +124,7 @@ static void rebuild()
 
     auto sub = lv_label_create(card);
     lv_label_set_text_fmt(sub, "%s  -  %s", ev.time_label, ev.calendar);
-    lv_obj_set_style_text_font(sub, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(sub, &noto_thai_12, 0);
     lv_obj_set_style_text_opa(sub, LV_OPA_60, 0);
 
     cards[i] = card;
@@ -230,7 +230,7 @@ void page_schedule_build(lv_obj_t *parent)
   lv_obj_remove_flag(stale_btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_event_cb(stale_btn, stale_clicked_cb, LV_EVENT_CLICKED, nullptr);
   auto stale_label = lv_label_create(stale_btn);
-  lv_obj_set_style_text_font(stale_label, &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_font(stale_label, &noto_thai_12, 0);
   lv_obj_set_style_text_color(stale_label, lv_palette_main(LV_PALETTE_ORANGE), 0);
   lv_label_set_text(stale_label, LV_SYMBOL_WARNING);
 
@@ -270,7 +270,7 @@ void page_schedule_build(lv_obj_t *parent)
   lv_obj_set_style_border_width(debug_panel, 0, 0);
   lv_obj_add_flag(debug_panel, LV_OBJ_FLAG_HIDDEN);
   debug_label = lv_label_create(debug_panel);
-  lv_obj_set_style_text_font(debug_label, &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_font(debug_label, &noto_thai_12, 0);
   lv_label_set_text(debug_label, "Connecting...");
 
   tick_timer = lv_timer_create(tick_cb, 1000, nullptr);

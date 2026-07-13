@@ -56,6 +56,7 @@ To upgrade: pick an esp32_smartdisplay GitHub release, use the LVGL range from i
 - `platformio.ini` has three envs for CYD hardware revisions; `esp32-2432S028R` is the default. If a flashed board shows a blank/mirrored/wrong-color screen, try `-e esp32-2432S028Rv2` (USB-C revision) or `-e esp32-2432S028Rv3` (ST7789 clone) before debugging code.
 - `loop()` must keep the `lv_tick_inc(millis() - last) + lv_timer_handler()` pattern; LVGL has no other tick source here.
 - `apps/firmware/.clangd` strips xtensa-gcc flags clangd doesn't understand — needed for editor IntelliSense (Zed) against the generated `compile_commands.json`.
+- Thai text renders via `src/ui/noto_thai_{14,12}.c` (Noto Sans Thai, Thai block only), set as `LV_FONT_DEFAULT` / used in `page_schedule.cpp`. Each is the primary font with `.fallback` pointing at the matching `lv_font_montserrat_*`, so Latin and `LV_SYMBOL_*` glyphs (absent from the Thai font) render through Montserrat unchanged. **The `.fallback` line is a MANUAL EDIT** — `lv_font_conv` emits `.fallback = NULL`, so after regenerating (command + re-edit are documented in each file's header) you must re-set it, or all Latin/symbols turn to tofu. LVGL 9.2 has no Thai shaping engine; marks stack correctly only because Noto's combining glyphs carry zero advance + negative x-bearing.
 
 ## Repo conventions
 
