@@ -1,5 +1,6 @@
 #include "ui.h"
 
+#include "page_claude.h"
 #include "page_monitor.h"
 #include "page_schedule.h"
 
@@ -9,6 +10,11 @@
 // ships as a one-glyph font (src/ui/font_calendar.c) applied to the tab label.
 LV_FONT_DECLARE(font_calendar);
 #define ICON_CALENDAR "\xEF\x81\xB3"
+
+// The Claude "spark" mark (U+E000), hand-rasterized one-glyph font
+// (src/ui/font_claude.c).
+LV_FONT_DECLARE(font_claude);
+#define ICON_CLAUDE "\xEE\x80\x80"
 
 // Adding a tab = one entry here (icon + optional icon_font + build + optional
 // set_active; use nullptr for the default symbol font / no per-activation
@@ -24,6 +30,7 @@ struct TabDef
 
 static const TabDef tabs[] = {
     {ICON_CALENDAR, &font_calendar, page_schedule_build, page_schedule_set_active},
+    {ICON_CLAUDE, &font_claude, page_claude_build, page_claude_set_active},
     {LV_SYMBOL_CHARGE, nullptr, page_monitor_build, page_monitor_set_active},
 };
 static constexpr size_t tab_count = sizeof(tabs) / sizeof(tabs[0]);

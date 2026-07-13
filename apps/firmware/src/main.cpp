@@ -2,6 +2,7 @@
 #include <esp32_smartdisplay.h>
 
 #include "hw_stats.h"
+#include "net/claude_client.h"
 #include "net/net.h"
 #include "net/schedule_client.h"
 #include "ui/ui.h"
@@ -16,6 +17,7 @@ void setup()
   hw_stats_init();
   net_init();
   schedule_client_init();
+  claude_client_init();
   ui_init();
 }
 

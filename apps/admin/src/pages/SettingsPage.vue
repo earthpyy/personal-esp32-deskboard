@@ -4,13 +4,19 @@ import { api } from '../api.js'
 
 const timezone = ref('')
 const cacheTtlMinutes = ref(5)
+const claudeCacheTtlMinutes = ref(5)
 const saved = ref(false)
 const error = ref<string | null>(null)
 
 onMounted(async () => {
-  const s = await api<{ timezone: string; cacheTtlMinutes: number }>('/api/settings')
+  const s = await api<{
+    timezone: string
+    cacheTtlMinutes: number
+    claudeCacheTtlMinutes: number
+  }>('/api/settings')
   timezone.value = s.timezone
   cacheTtlMinutes.value = s.cacheTtlMinutes
+  claudeCacheTtlMinutes.value = s.claudeCacheTtlMinutes
 })
 
 async function save() {
@@ -19,7 +25,11 @@ async function save() {
   try {
     await api('/api/settings', {
       method: 'PUT',
-      body: JSON.stringify({ timezone: timezone.value, cacheTtlMinutes: cacheTtlMinutes.value }),
+      body: JSON.stringify({
+        timezone: timezone.value,
+        cacheTtlMinutes: cacheTtlMinutes.value,
+        claudeCacheTtlMinutes: claudeCacheTtlMinutes.value,
+      }),
     })
     saved.value = true
   } catch (err) {
@@ -37,6 +47,8 @@ async function save() {
         <input id="tz" v-model="timezone" class="input w-full" placeholder="Asia/Bangkok" />
         <label class="label" for="ttl">Google cache TTL (minutes)</label>
         <input id="ttl" v-model.number="cacheTtlMinutes" type="number" min="1" class="input w-full" />
+        <label class="label" for="claude-ttl">Claude usage cache TTL (minutes)</label>
+        <input id="claude-ttl" v-model.number="claudeCacheTtlMinutes" type="number" min="1" class="input w-full" />
       </fieldset>
       <div class="card-actions items-center">
         <button class="btn btn-primary" @click="save">Save</button>

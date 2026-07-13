@@ -41,6 +41,16 @@ Firmware verification = clean build + flash + observing serial log / on-screen b
 - The admin UI has no auth — LAN-only by design; never port-forward the API.
 - Firmware: the HTTP fetch task (`src/net/schedule_client.cpp`) is pinned to core 0 and hands data to the UI via a mutex + fresh flag — never call LVGL from it. LVGL runs on core 1 with `loop()`.
 
+## Claude usage feature
+
+- `GET /claude` returns flat JSON the board renders verbatim (same anchor-on-`now` contract as `/schedule`): per-account `five_hour`/`weekly` with `percent`, `severity` (`normal`/`warning`/`critical`), and a pre-formatted `resets_label` in the configured timezone. Shown on the board's Claude tab (`src/ui/page_claude.cpp`) as stacked per-account panels with two severity-colored bars each.
+- Accounts are managed in the admin **Claude** tab (add/edit/delete) and persisted to gitignored `apps/api/data/claude-accounts.json` (`{id, alias, configDir}`); `apps/api/src/claudeAccounts.ts` is the store, `claude.ts` reads it per fetch. `configDir` is a `CLAUDE_CONFIG_DIR` (may be `~`-prefixed); **empty `configDir` = the default `~/.claude` profile**.
+- The **live OAuth token is read from the macOS Keychain** — service `Claude Code-credentials-<first8 sha256(expanded configDir)>` (or the bare `Claude Code-credentials` when `configDir` is empty), account = OS user — via the `security` CLI. Needs a one-time "Always Allow" grant per item. A profile's `.credentials.json` file is deliberately ignored (Claude Code doesn't keep it fresh; the Keychain is the live store on macOS). If a profile is in *file mode* (its `.credentials.json` exists) its Keychain copy goes stale → the account reads `expired`; remove that file and `claude /login` to restore Keychain mode.
+- Data source: `GET https://api.anthropic.com/api/oauth/usage`, headers `Authorization: Bearer`, `anthropic-beta: oauth-2025-04-20`, `anthropic-version: 2023-06-01`, and **`User-Agent: claude-code/<v>` (required — omitting it yields persistent 429s)**. The endpoint rate-limits hard, so results are cached (`claudeCacheTtlMinutes`, default 5) even though the board polls `/claude` every 60 s; a transient 429/network error keeps the last-good numbers instead of flapping to "unavailable". Cache busts on `POST /api/sync`.
+- Read-only by design: no token refresh, no write-back. An expired/unreadable token shows a dimmed "unavailable" panel until Claude Code itself refreshes that account.
+- Admin **Claude** tab (`apps/admin/src/pages/ClaudePage.vue`) shows the usage bars + a "Claude sync" card (last-sync time + per-account ok/error) with a manual **Sync now** (`POST /api/claude/sync`, forces a refresh). `GET /api/claude/sync` returns the last fetch outcome — the raw per-account result, not the last-good fallback that the board bars use.
+- Tab icon is a hand-rasterized Claude "spark" one-glyph font (`src/ui/font_claude.c`, U+E000) — same one-glyph-font pattern as `font_calendar.c`, but bitmap-authored (no lv_font_conv source), so don't try to regenerate it from a TTF.
+
 ## Critical constraint: firmware version pins move in lockstep
 
 `platformio.ini` pins `esp32_smartdisplay@2.1.1` + `lvgl@9.2.2`, and the `boards/` submodule is checked out at `d8a9270` (the commit that release ships with). Do not bump any of these independently:

@@ -4,6 +4,13 @@ import { node } from '@elysiajs/node'
 import { Elysia, file, redirect, t } from 'elysia'
 import { deleteAccount, listAccounts, saveAccount } from './accounts.js'
 import { accountCalendarCounts, getSchedule, lastSyncResult } from './cache.js'
+import { claudeSyncResult, getClaudeUsage } from './claude.js'
+import {
+  addClaudeAccount,
+  deleteClaudeAccount,
+  listClaudeAccounts,
+  updateClaudeAccount,
+} from './claudeAccounts.js'
 import { OAUTH_SCOPES, emailForCode, oauthClient } from './google.js'
 import { getSettings, saveSettings } from './settings.js'
 
@@ -32,6 +39,46 @@ const app = new Elysia({ adapter: node() })
       ?? request.headers.get('x-forwarded-for')
       ?? 'unknown'
     return getSchedule()
+  })
+  .get('/claude', ({ request }) => {
+    boardStatus.lastPollAt = Date.now()
+    boardStatus.lastPollIp = request.headers.get('x-board-ip')
+      ?? request.headers.get('x-forwarded-for')
+      ?? 'unknown'
+    return getClaudeUsage()
+  })
+  .get('/api/claude', () => getClaudeUsage())
+  .get('/api/claude/sync', () => claudeSyncResult())
+  .post('/api/claude/sync', async () => {
+    await getClaudeUsage(true)
+    return claudeSyncResult()
+  })
+  .get('/api/claude/accounts', () => listClaudeAccounts())
+  .post('/api/claude/accounts', async ({ body }) => {
+    const account = addClaudeAccount({
+      alias: body.alias.trim(),
+      configDir: body.configDir.trim(),
+    })
+    await getClaudeUsage(true) // warm the cache so the new account shows immediately
+    return account
+  }, {
+    body: t.Object({ alias: t.String(), configDir: t.String() }),
+  })
+  .patch('/api/claude/accounts/:id', async ({ params, body }) => {
+    const updated = updateClaudeAccount(params.id, {
+      alias: body.alias?.trim(),
+      configDir: body.configDir?.trim(),
+    })
+    if (!updated) return new Response('Account not found', { status: 404 })
+    await getClaudeUsage(true)
+    return updated
+  }, {
+    body: t.Partial(t.Object({ alias: t.String(), configDir: t.String() })),
+  })
+  .delete('/api/claude/accounts/:id', async ({ params }) => {
+    deleteClaudeAccount(params.id)
+    await getClaudeUsage(true)
+    return { ok: true }
   })
   .get('/api/accounts', () => {
     const counts = accountCalendarCounts()
@@ -77,7 +124,7 @@ const app = new Elysia({ adapter: node() })
   })
   .get('/api/sync', () => lastSyncResult())
   .post('/api/sync', async () => {
-    await getSchedule(true)
+    await Promise.all([getSchedule(true), getClaudeUsage(true)])
     return lastSyncResult()
   })
   .get('/api/settings', () => getSettings())
@@ -85,6 +132,7 @@ const app = new Elysia({ adapter: node() })
     body: t.Partial(t.Object({
       timezone: t.String(),
       cacheTtlMinutes: t.Number({ minimum: 1 }),
+      claudeCacheTtlMinutes: t.Number({ minimum: 1 }),
     })),
   })
   .get('/api/board-status', () => boardStatus)

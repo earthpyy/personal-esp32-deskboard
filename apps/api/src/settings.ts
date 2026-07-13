@@ -4,9 +4,14 @@ import path from 'node:path'
 export interface Settings {
   timezone: string
   cacheTtlMinutes: number
+  claudeCacheTtlMinutes: number
 }
 
-const DEFAULTS: Settings = { timezone: 'Asia/Bangkok', cacheTtlMinutes: 5 }
+const DEFAULTS: Settings = {
+  timezone: 'Asia/Bangkok',
+  cacheTtlMinutes: 5,
+  claudeCacheTtlMinutes: 5,
+}
 
 export const dataDir = path.resolve(import.meta.dirname, '../data')
 const settingsPath = path.join(dataDir, 'settings.json')
