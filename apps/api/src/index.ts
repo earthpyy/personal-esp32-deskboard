@@ -40,6 +40,7 @@ const app = new Elysia({ adapter: node() })
       alias: alias ?? null,
       status,
       calendars: counts.get(email)?.calendarCount ?? null,
+      calendarList: counts.get(email)?.calendars ?? null,
       error: counts.get(email)?.error ?? null,
     }))
   })
@@ -74,6 +75,7 @@ const app = new Elysia({ adapter: node() })
     // Response.redirect (behind Elysia's redirect()) rejects relative URLs on Node
     return new Response(null, { status: 302, headers: { location: '/admin/' } })
   })
+  .get('/api/sync', () => lastSyncResult())
   .post('/api/sync', async () => {
     await getSchedule(true)
     return lastSyncResult()
@@ -85,7 +87,7 @@ const app = new Elysia({ adapter: node() })
       cacheTtlMinutes: t.Number({ minimum: 1 }),
     })),
   })
-  .get('/api/board-status', () => ({ ...boardStatus, lastSync: lastSyncResult() }))
+  .get('/api/board-status', () => boardStatus)
   .get('/admin', () =>
     fs.existsSync(adminIndex)
       ? file(adminIndex)

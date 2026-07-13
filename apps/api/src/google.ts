@@ -32,9 +32,15 @@ export async function emailForCode(
   return { email: data.email, refreshToken: tokens.refresh_token }
 }
 
+export interface CalendarInfo {
+  name: string
+  color: string
+}
+
 export interface AccountFetchResult {
   email: string
   calendarCount: number
+  calendars: CalendarInfo[]
   events: SourceEvent[]
   error?: string
 }
@@ -84,10 +90,18 @@ export async function fetchAccountEvents(
         })
       }
     }))
-    return { email: account.email, calendarCount: selected.length, events }
+    return {
+      email: account.email,
+      calendarCount: selected.length,
+      calendars: selected.map((cal) => ({
+        name: calendarLabel(cal),
+        color: cal.backgroundColor ?? '#888888',
+      })),
+      events,
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (message.includes('invalid_grant')) markNeedsReconnect(account.email)
-    return { email: account.email, calendarCount: 0, events: [], error: message }
+    return { email: account.email, calendarCount: 0, calendars: [], events: [], error: message }
   }
 }

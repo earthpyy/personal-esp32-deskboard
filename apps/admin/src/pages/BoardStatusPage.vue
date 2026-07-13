@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { api, type SyncResult } from '../api.js'
+import { api } from '../api.js'
 
 interface BoardStatus {
   lastPollAt: number | null
   lastPollIp: string | null
-  lastSync: SyncResult | null
 }
 
 const status = ref<BoardStatus | null>(null)
@@ -54,12 +53,6 @@ const freshness = computed(() => {
         <div class="stat">
           <div class="stat-title">Board IP</div>
           <div class="stat-value text-lg">{{ status?.lastPollIp ?? '—' }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-title">Last Google sync</div>
-          <div class="stat-value text-lg">
-            {{ status?.lastSync ? new Date(status.lastSync.syncedAt).toLocaleTimeString() : '—' }}
-          </div>
         </div>
       </div>
     </div>

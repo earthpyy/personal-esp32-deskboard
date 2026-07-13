@@ -1,5 +1,5 @@
 import { listAccounts } from './accounts.js'
-import { type AccountFetchResult, fetchAccountEvents } from './google.js'
+import { type AccountFetchResult, type CalendarInfo, fetchAccountEvents } from './google.js'
 import { buildSchedule, type Schedule } from './schedule.js'
 import { getSettings } from './settings.js'
 import { startOfDay } from './time.js'
@@ -45,8 +45,14 @@ export function lastSyncResult(): SyncResult | null {
   return lastSync
 }
 
-export function accountCalendarCounts(): Map<string, { calendarCount: number; error?: string }> {
+export function accountCalendarCounts(): Map<
+  string,
+  { calendarCount: number; calendars: CalendarInfo[]; error?: string }
+> {
   return new Map(
-    (cached?.results ?? []).map((r) => [r.email, { calendarCount: r.calendarCount, error: r.error }]),
+    (cached?.results ?? []).map((r) => [
+      r.email,
+      { calendarCount: r.calendarCount, calendars: r.calendars, error: r.error },
+    ]),
   )
 }
