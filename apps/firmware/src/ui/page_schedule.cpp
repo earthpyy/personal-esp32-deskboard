@@ -85,8 +85,8 @@ static void rebuild()
     lv_label_set_text(label, ad.title);
     lv_obj_set_style_text_font(label, &noto_thai_12, 0);
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
-    lv_obj_set_style_max_width(label, 140, 0);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_max_width(label, 280, 0);
   }
   set_hidden(allday_row, data->all_day_count == 0 || debug_forced);
 
