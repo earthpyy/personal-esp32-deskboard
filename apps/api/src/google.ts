@@ -3,6 +3,10 @@ import { google } from 'googleapis'
 import { type Account, markNeedsReconnect } from './accounts.js'
 import type { SourceEvent } from './schedule.js'
 
+// non-meeting event types Google surfaces (working-location pills, OOO/focus
+// blocks); the board only wants actual events, so drop them at fetch time
+const HIDDEN_EVENT_TYPES = new Set(['workingLocation', 'outOfOffice', 'focusTime'])
+
 export const OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -62,6 +66,7 @@ export async function fetchAccountEvents(
       })
       for (const ev of data.items ?? []) {
         if (ev.status === 'cancelled') continue
+        if (ev.eventType && HIDDEN_EVENT_TYPES.has(ev.eventType)) continue
         const self = ev.attendees?.find((a) => a.self)
         events.push({
           title: ev.summary ?? '(untitled)',
