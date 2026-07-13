@@ -66,7 +66,7 @@ export function buildSchedule(
         title: ev.title,
         calendar: ev.calendar,
         color: ev.color,
-        time: `${hhmm(clampedStart, timezone)} – ${hhmm(clampedEnd, timezone)}`,
+        time: `${hhmm(clampedStart, timezone)} - ${hhmm(clampedEnd, timezone)}`,
         start: Math.floor(clampedStart / 1000),
         end: Math.floor(clampedEnd / 1000),
       })

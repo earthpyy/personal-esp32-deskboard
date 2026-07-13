@@ -123,7 +123,7 @@ static void rebuild()
     lv_obj_set_width(title, lv_pct(100));
 
     auto sub = lv_label_create(card);
-    lv_label_set_text_fmt(sub, "%s  ·  %s", ev.time_label, ev.calendar);
+    lv_label_set_text_fmt(sub, "%s  -  %s", ev.time_label, ev.calendar);
     lv_obj_set_style_text_font(sub, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_opa(sub, LV_OPA_60, 0);
 

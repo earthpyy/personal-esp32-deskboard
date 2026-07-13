@@ -34,7 +34,7 @@ test('merges accounts and sorts by start time', () => {
     { events: [timed('A', '2026-07-13T09:30:00+07:00', '2026-07-13T10:00:00+07:00')] },
   ], TZ, NOW)
   assert.deepEqual(s.events.map((e) => e.title), ['A', 'B'])
-  assert.equal(s.events[0].time, '09:30 – 10:00')
+  assert.equal(s.events[0].time, '09:30 - 10:00')
   assert.equal(s.events[0].start, Date.parse('2026-07-13T09:30:00+07:00') / 1000)
 })
 
@@ -64,7 +64,7 @@ test('clamps multi-day timed events to today and drops non-overlapping ones', ()
     ],
   }], TZ, NOW)
   assert.equal(s.events.length, 1)
-  assert.equal(s.events[0].time, '00:00 – 14:00')
+  assert.equal(s.events[0].time, '00:00 - 14:00')
   assert.equal(s.events[0].start, Date.parse('2026-07-13T00:00:00+07:00') / 1000)
 })
 
