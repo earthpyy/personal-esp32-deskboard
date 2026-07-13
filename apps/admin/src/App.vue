@@ -12,6 +12,7 @@
           <router-link to="/board" class="tab" exact-active-class="tab-active">Status</router-link>
         </div>
       </div>
+      <div class="navbar-end"></div>
     </div>
 
     <div class="max-w-3xl mx-auto p-6 space-y-4">
