@@ -35,6 +35,14 @@ static const TabDef tabs[] = {
 };
 static constexpr size_t tab_count = sizeof(tabs) / sizeof(tabs[0]);
 
+// The resistive touch runs uncalibrated (raw full-range ADC->pixel map in the
+// driver), so reported coordinates are pulled toward center near the screen
+// edges — a press on the bottom tab bar often reads a dozen-ish pixels short
+// and lands just above the bar. Grow each tab button's hit area on all sides so
+// those near-misses (above the bar, and off the left/right edges for the outer
+// tabs) still register. Bump this if tabs are still hard to hit.
+static constexpr int32_t tab_ext_click_area = 16;
+
 static void tab_changed_cb(lv_event_t *e)
 {
   auto tabview = (lv_obj_t *)lv_event_get_target(e);
@@ -57,12 +65,12 @@ void ui_init()
   {
     auto content = lv_tabview_add_tab(tabview, tabs[i].icon);
     tabs[i].build(content);
+
+    auto button = lv_obj_get_child(lv_tabview_get_tab_bar(tabview), i);
+    lv_obj_set_ext_click_area(button, tab_ext_click_area);
     if (tabs[i].icon_font != nullptr)
-    {
       // tab bar button -> its label (child 0); give it the custom icon font
-      auto button = lv_obj_get_child(lv_tabview_get_tab_bar(tabview), i);
       lv_obj_set_style_text_font(lv_obj_get_child(button, 0), tabs[i].icon_font, 0);
-    }
   }
 
   lv_obj_add_event_cb(tabview, tab_changed_cb, LV_EVENT_VALUE_CHANGED, nullptr);
