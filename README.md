@@ -5,7 +5,8 @@ Desk dashboard on an ESP32-2432S028R ("Cheap Yellow Display" — 2.8" ILI9341 32
 ## Layout
 
 - `apps/firmware` — PlatformIO + Arduino framework + LVGL 9 via [esp32_smartdisplay](https://github.com/rzeldent/esp32-smartdisplay). Board definitions are vendored as a git submodule in `apps/firmware/boards`.
-- `apps/api` — [Elysia](https://elysiajs.com) on the Node adapter, TypeScript. Node 24 (pinned via `.node-version`, managed by mise), pnpm workspace.
+- `apps/api` — [Elysia](https://elysiajs.com) on the Node adapter, TypeScript. Node 24 (pinned via `.node-version`, managed by mise), pnpm workspace. Serves today's Google Calendar events to the board (`GET /schedule`) and hosts the admin UI at `/admin`.
+- `apps/admin` — Vue 3 + Vite + Tailwind 4 + daisyUI management SPA (Google accounts, settings, board status, manual sync). Built to static files served by the API.
 
 ## First-time setup
 
@@ -14,6 +15,22 @@ git clone --recurse-submodules <repo>
 pnpm install
 cd apps/firmware && python3 -m venv .venv && .venv/bin/pip install platformio
 ```
+
+### Firmware secrets (`secrets.h`)
+
+The firmware needs WiFi credentials and the API server address at compile time. Copy the committed template and fill in real values — the copy is gitignored, so it never leaves your machine:
+
+```bash
+cd apps/firmware
+cp include/secrets.example.h include/secrets.h
+```
+
+Then edit `include/secrets.h`:
+
+- `WIFI_SSID` / `WIFI_PASS` — your WiFi network (2.4 GHz; the ESP32 can't see 5 GHz).
+- `API_BASE_URL` — where `apps/api` runs, e.g. `http://192.168.1.10:3000` (no trailing slash).
+
+The build fails with a missing-header error until this file exists. Changing any value means reflashing (`pio run -t upload`).
 
 ## Firmware (run from `apps/firmware`)
 
@@ -45,4 +62,25 @@ If the screen stays blank or colors/mirroring look wrong, flash one of the sibli
 ```bash
 pnpm dev:api                      # tsx watch on :3000
 curl localhost:3000/health        # {"status":"ok"}
+pnpm --filter api test            # unit tests (schedule builder + time helpers)
+```
+
+### Google Calendar credentials (`.env`)
+
+The API reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from the environment, or from an optional `apps/api/.env` (gitignored; real env vars take precedence):
+
+```bash
+cd apps/api
+cp .env.example .env              # then fill in the two values
+```
+
+To get the values: create a Google Cloud project → enable the Calendar API → create an OAuth **web application** client with redirect URI `http://<server>:3000/api/oauth/callback` → set the consent screen to **In production** (in Testing mode, refresh tokens expire every 7 days). Then open `http://<server>:3000/admin` and connect your Google accounts from the Accounts page. Tokens and settings land in gitignored `apps/api/data/`.
+
+The admin UI has no auth — it's LAN-only by design. Do not port-forward the API.
+
+## Admin UI
+
+```bash
+pnpm dev:admin                    # Vite dev server, proxies /api and /schedule to :3000
+pnpm build:admin                  # build into apps/admin/dist (served by the API at /admin)
 ```

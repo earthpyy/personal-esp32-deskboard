@@ -8,6 +8,10 @@ import { accountCalendarCounts, getSchedule, lastSyncResult } from './cache.js'
 import { OAUTH_SCOPES, emailForCode, oauthClient } from './google.js'
 import { getSettings, saveSettings } from './settings.js'
 
+// optional .env next to package.json (see .env.example); real env vars still win
+const envPath = path.resolve(import.meta.dirname, '../.env')
+if (fs.existsSync(envPath)) process.loadEnvFile(envPath)
+
 const adminDist = path.resolve(import.meta.dirname, '../../admin/dist')
 const adminIndex = path.join(adminDist, 'index.html')
 
