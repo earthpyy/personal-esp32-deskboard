@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <esp_random.h>
 #include <secrets.h>
+#include <string.h>
 
 // one-glyph fork/knife icon for the lunch divider (src/ui/font_lunch.c)
 LV_FONT_DECLARE(font_lunch);
@@ -15,10 +16,12 @@ static ScheduleData *data; // heap-allocated in build (dram0 .bss is full)
 static bool has_data = false;
 
 static lv_obj_t *date_label;
+static lv_obj_t *clock_label; // live "HH:MM" wall clock, top-right
 static lv_obj_t *stale_btn; // warning icon + "as of HH:MM"
 static lv_obj_t *allday_row;
 static lv_obj_t *list;
 static lv_obj_t *now_line;
+static lv_obj_t *nextin_label; // "next in Xh Ym" at the right end of the now-line
 static lv_obj_t *lunch_line; // "lunch break" divider at the free lunch slot
 static lv_obj_t *debug_panel;
 static lv_obj_t *debug_label;
@@ -265,6 +268,7 @@ static void update_stale()
   auto const last_ok = schedule_client_last_success_ms();
   auto const stale = last_ok > 0 && millis() - last_ok > STALE_AFTER_MS;
   set_hidden(stale_btn, !stale);
+  set_hidden(clock_label, stale || !has_data); // stale warning takes over the corner
   if (stale)
   {
     auto label = lv_obj_get_child(stale_btn, 0);
@@ -273,6 +277,63 @@ static void update_stale()
   else if (debug_forced && has_data)
   {
     debug_forced = false; // auto-close the debug panel once healthy again
+  }
+}
+
+// Live "HH:MM" clock (top-right) plus the "next in Xh Ym" countdown in the
+// now-line. Both are minute-resolution; cached strings keep the labels from
+// redrawing every second. Clock visibility is owned by update_stale().
+static void update_clock_and_nextin()
+{
+  static char clock_str[8] = "";
+  static char nextin_str[24] = "";
+
+  if (!has_data)
+    return;
+
+  // wall clock: server's "HH:MM" at fetch + seconds elapsed since, wrapped daily
+  auto const *lbl = data->now_label;
+  int const base = ((lbl[0] - '0') * 10 + (lbl[1] - '0')) * 3600 +
+                   ((lbl[3] - '0') * 10 + (lbl[4] - '0')) * 60;
+  int const elapsed = (int)((millis() - data->received_ms) / 1000);
+  int const sod = ((base + elapsed) % 86400 + 86400) % 86400;
+  char clock_buf[8];
+  lv_snprintf(clock_buf, sizeof(clock_buf), "%02d:%02d", sod / 3600, (sod % 3600) / 60);
+  if (strcmp(clock_buf, clock_str) != 0)
+  {
+    strcpy(clock_str, clock_buf);
+    lv_label_set_text(clock_label, clock_str);
+  }
+
+  // "next in": countdown to the next not-yet-started event; hidden while a
+  // meeting is in progress and when nothing upcoming remains
+  auto const now = schedule_client_now(data);
+  bool in_meeting = false;
+  int64_t next_start = -1;
+  for (int i = 0; i < data->event_count; i++)
+  {
+    auto const &ev = data->events[i];
+    if (ev.start <= now && now < ev.end)
+      in_meeting = true;
+    if (ev.start > now && next_start < 0)
+      next_start = ev.start;
+  }
+  bool const show = next_start >= 0 && !in_meeting;
+  set_hidden(nextin_label, !show);
+  if (show)
+  {
+    int64_t const mins = (next_start - now + 59) / 60; // ceil to the minute
+    char nextin_buf[24];
+    if (mins >= 60)
+      lv_snprintf(nextin_buf, sizeof(nextin_buf), "next in %lldh %lldm",
+                  (long long)(mins / 60), (long long)(mins % 60));
+    else
+      lv_snprintf(nextin_buf, sizeof(nextin_buf), "next in %lldm", (long long)mins);
+    if (strcmp(nextin_buf, nextin_str) != 0)
+    {
+      strcpy(nextin_str, nextin_buf);
+      lv_label_set_text(nextin_label, nextin_str);
+    }
   }
 }
 
@@ -295,6 +356,7 @@ static void tick_cb(lv_timer_t *timer)
     restyle(false);
   }
   update_stale();
+  update_clock_and_nextin();
   update_debug();
   tick_count++;
 }
@@ -331,6 +393,10 @@ void page_schedule_build(lv_obj_t *parent)
   lv_obj_set_style_text_font(stale_label, &noto_thai_12, 0);
   lv_obj_set_style_text_color(stale_label, lv_palette_main(LV_PALETTE_ORANGE), 0);
   lv_label_set_text(stale_label, LV_SYMBOL_WARNING);
+
+  clock_label = lv_label_create(header);
+  lv_label_set_text(clock_label, "");
+  lv_obj_add_flag(clock_label, LV_OBJ_FLAG_HIDDEN); // shown once data arrives
 
   allday_row = lv_obj_create(parent);
   lv_obj_set_size(allday_row, lv_pct(100), LV_SIZE_CONTENT);
@@ -370,6 +436,15 @@ void page_schedule_build(lv_obj_t *parent)
   lv_obj_set_style_pad_hor(now_badge, 6, 0);
   lv_obj_set_style_pad_ver(now_badge, 1, 0);
   lv_obj_set_style_radius(now_badge, LV_RADIUS_CIRCLE, 0);
+
+  // "next in Xh Ym": sits just right of the "now" badge; the rule below then
+  // flex-grows to fill the remaining width out to the edge
+  nextin_label = lv_label_create(now_line);
+  lv_label_set_text(nextin_label, "");
+  lv_obj_set_style_text_font(nextin_label, &lv_font_montserrat_10, 0);
+  lv_obj_set_style_text_color(nextin_label, lv_palette_main(LV_PALETTE_RED), 0);
+  lv_obj_set_style_margin_left(nextin_label, 6, 0);
+  lv_obj_add_flag(nextin_label, LV_OBJ_FLAG_HIDDEN);
 
   auto now_rule = lv_obj_create(now_line);
   lv_obj_set_height(now_rule, 2);
