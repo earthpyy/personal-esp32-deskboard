@@ -27,6 +27,21 @@ const ageMin = computed(() => {
   return (nowTick.value - status.value.lastPollAt) / 60_000
 })
 
+function plural(n: number, unit: string) {
+  return `${n} ${unit}${n === 1 ? '' : 's'} ago`
+}
+
+const ageLabel = computed(() => {
+  if (!status.value?.lastPollAt) return null
+  const seconds = Math.max(0, Math.round((nowTick.value - status.value.lastPollAt) / 1000))
+  if (seconds < 60) return plural(seconds, 'second')
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return plural(minutes, 'minute')
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return plural(hours, 'hour')
+  return plural(Math.floor(hours / 24), 'day')
+})
+
 const freshness = computed(() => {
   if (ageMin.value === null) return { cls: 'badge-neutral', label: 'never seen' }
   if (ageMin.value < 3) return { cls: 'badge-success', label: 'online' }
@@ -48,7 +63,7 @@ const freshness = computed(() => {
           <div class="stat-value text-lg">
             {{ status?.lastPollAt ? new Date(status.lastPollAt).toLocaleTimeString() : '—' }}
           </div>
-          <div class="stat-desc" v-if="ageMin !== null">{{ ageMin.toFixed(1) }} min ago</div>
+          <div class="stat-desc" v-if="ageLabel">{{ ageLabel }}</div>
         </div>
         <div class="stat">
           <div class="stat-title">Board IP</div>

@@ -1,7 +1,10 @@
-import type { OAuth2Client } from 'google-auth-library'
 import { google } from 'googleapis'
 import { type Account, markNeedsReconnect } from './accounts.js'
 import type { SourceEvent } from './schedule.js'
+
+// googleapis pulls in two copies of google-auth-library; deriving the type from
+// the OAuth2 constructor itself keeps us on the exact copy google.auth.OAuth2 uses
+type OAuth2Client = InstanceType<typeof google.auth.OAuth2>
 
 // non-meeting event types Google surfaces (working-location pills, OOO/focus
 // blocks); the board only wants actual events, so drop them at fetch time
