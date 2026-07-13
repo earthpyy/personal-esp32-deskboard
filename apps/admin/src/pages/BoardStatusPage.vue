@@ -9,7 +9,8 @@ interface BoardStatus {
 
 const status = ref<BoardStatus | null>(null)
 const nowTick = ref(Date.now())
-let timer: ReturnType<typeof setInterval> | undefined
+let loadTimer: ReturnType<typeof setInterval> | undefined
+let tickTimer: ReturnType<typeof setInterval> | undefined
 
 async function load() {
   status.value = await api<BoardStatus>('/api/board-status')
@@ -18,9 +19,14 @@ async function load() {
 
 onMounted(() => {
   load()
-  timer = setInterval(load, 10_000)
+  loadTimer = setInterval(load, 10_000)
+  // tick the clock every second so the "… ago" label counts up in real time
+  tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1_000)
 })
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+  clearInterval(loadTimer)
+  clearInterval(tickTimer)
+})
 
 const ageMin = computed(() => {
   if (!status.value?.lastPollAt) return null

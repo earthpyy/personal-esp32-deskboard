@@ -32,6 +32,8 @@ function redirectUriFrom(request: Request): string {
 
 const app = new Elysia({ adapter: node() })
   .get('/health', () => ({ status: 'ok' }))
+  // relative redirect via bare Response — redirect() rejects relative URLs on Node
+  .get('/', () => new Response(null, { status: 302, headers: { location: '/admin/' } }))
   .get('/schedule', ({ request }) => {
     boardStatus.lastPollAt = Date.now()
     // the board reports its own IP; the node adapter can't see the socket address
