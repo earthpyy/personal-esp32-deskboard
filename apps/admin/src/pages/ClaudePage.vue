@@ -178,7 +178,7 @@ onUnmounted(() => clearInterval(timer))
               <div
                 v-for="row in [
                   { name: '5h', limit: acc.five_hour },
-                  { name: 'Wk', limit: acc.weekly },
+                  { name: 'Week', limit: acc.weekly },
                 ]"
                 :key="row.name"
                 class="flex items-center gap-3 text-sm"
