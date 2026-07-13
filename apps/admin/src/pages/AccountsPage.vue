@@ -4,6 +4,7 @@ import { api } from '../api.js'
 
 interface AccountRow {
   email: string
+  alias: string | null
   status: 'ok' | 'needs-reconnect'
   calendars: number | null
   error: string | null
@@ -19,6 +20,15 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+async function saveAlias(a: AccountRow) {
+  const alias = (a.alias ?? '').trim()
+  await api(`/api/accounts/${encodeURIComponent(a.email)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ alias }),
+  })
+  a.alias = alias || null
 }
 
 async function disconnect(email: string) {
@@ -46,11 +56,20 @@ onMounted(load)
       </p>
       <table v-else class="table">
         <thead>
-          <tr><th>Email</th><th>Status</th><th>Calendars</th><th></th></tr>
+          <tr><th>Email</th><th>Alias</th><th>Status</th><th>Calendars</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="a in accounts" :key="a.email">
             <td>{{ a.email }}</td>
+            <td>
+              <input
+                v-model="a.alias"
+                class="input input-sm w-40"
+                :placeholder="a.email"
+                @blur="saveAlias(a)"
+                @keyup.enter="saveAlias(a)"
+              />
+            </td>
             <td>
               <span v-if="a.status === 'ok' && !a.error" class="badge badge-success">ok</span>
               <span v-else-if="a.status === 'needs-reconnect'" class="badge badge-error">needs reconnect</span>

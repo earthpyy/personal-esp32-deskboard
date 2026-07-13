@@ -54,6 +54,11 @@ export async function fetchAccountEvents(
     ])
     // mirror the "ticked" calendars in the Google Calendar UI
     const selected = (list.items ?? []).filter((c) => c.selected)
+    // the primary calendar is named after the email; show the alias instead
+    const calendarLabel = (cal: (typeof selected)[number]) =>
+      cal.primary && account.alias
+        ? account.alias
+        : (cal.summaryOverride ?? cal.summary ?? 'Calendar')
     const events: SourceEvent[] = []
     await Promise.all(selected.map(async (cal) => {
       const { data } = await calendar.events.list({
@@ -64,6 +69,7 @@ export async function fetchAccountEvents(
         orderBy: 'startTime',
         maxResults: 50,
       })
+      const calendarName = calendarLabel(cal)
       for (const ev of data.items ?? []) {
         if (ev.status === 'cancelled') continue
         if (ev.eventType && HIDDEN_EVENT_TYPES.has(ev.eventType)) continue
@@ -74,7 +80,7 @@ export async function fetchAccountEvents(
           end: { dateTime: ev.end?.dateTime ?? undefined, date: ev.end?.date ?? undefined },
           declined: self?.responseStatus === 'declined',
           color: (ev.colorId && palette.event?.[ev.colorId]?.background) || cal.backgroundColor || '#888888',
-          calendar: cal.summaryOverride ?? cal.summary ?? 'Calendar',
+          calendar: calendarName,
         })
       }
     }))

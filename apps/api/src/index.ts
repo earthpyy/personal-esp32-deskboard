@@ -35,12 +35,24 @@ const app = new Elysia({ adapter: node() })
   })
   .get('/api/accounts', () => {
     const counts = accountCalendarCounts()
-    return listAccounts().map(({ email, status }) => ({
+    return listAccounts().map(({ email, status, alias }) => ({
       email,
+      alias: alias ?? null,
       status,
       calendars: counts.get(email)?.calendarCount ?? null,
       error: counts.get(email)?.error ?? null,
     }))
+  })
+  .patch('/api/accounts/:email', async ({ params, body }) => {
+    const email = decodeURIComponent(params.email)
+    const account = listAccounts().find((a) => a.email === email)
+    if (!account) return new Response('Account not found', { status: 404 })
+    const alias = body.alias.trim()
+    saveAccount({ ...account, alias: alias || undefined })
+    await getSchedule(true) // bust the cache so the board relabels on next poll
+    return { ok: true }
+  }, {
+    body: t.Object({ alias: t.String() }),
   })
   .delete('/api/accounts/:email', ({ params }) => {
     deleteAccount(decodeURIComponent(params.email))

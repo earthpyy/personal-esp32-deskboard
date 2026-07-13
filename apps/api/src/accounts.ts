@@ -8,6 +8,9 @@ export interface Account {
   email: string
   refreshToken: string
   status: AccountStatus
+  // optional display name shown on the board in place of the email-named
+  // primary calendar; absent/empty falls back to the email
+  alias?: string
 }
 
 const accountsDir = path.join(dataDir, 'accounts')
