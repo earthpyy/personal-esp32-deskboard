@@ -59,7 +59,8 @@ const app = new Elysia({ adapter: node() })
     )
     saveAccount({ email, refreshToken, status: 'ok' })
     await getSchedule(true) // warm the cache so the new account shows up immediately
-    return redirect('/admin/')
+    // Response.redirect (behind Elysia's redirect()) rejects relative URLs on Node
+    return new Response(null, { status: 302, headers: { location: '/admin/' } })
   })
   .post('/api/sync', async () => {
     await getSchedule(true)
