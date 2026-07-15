@@ -154,6 +154,10 @@ const app = new Elysia({ adapter: node() })
     return file(target)
   })
 
-app.listen(3000, ({ hostname, port }) => {
+// The board's API_BASE_URL and the Google OAuth redirect URI both bake in the
+// port, so changing it means reflashing and re-registering the redirect.
+const PORT = Number(process.env.PORT) || 3300
+
+app.listen(PORT, ({ hostname, port }) => {
   console.log(`API running at http://${hostname}:${port}`)
 })

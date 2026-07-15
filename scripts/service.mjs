@@ -91,7 +91,7 @@ function install() {
   launchctlSoft(['unload', plistPath])
   run('launchctl', ['load', '-w', plistPath])
   console.log(`✓ Installed and started ${LABEL}`)
-  console.log('  Check health:  curl localhost:3000/health')
+  console.log('  Check health:  curl localhost:3300/health')
   status()
 }
 

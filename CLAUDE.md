@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A pnpm monorepo for a desk dashboard running on an ESP32-2432S028R "Cheap Yellow Display" (2.8" ILI9341 320x240 TFT + XPT2046 resistive touch, CH340 USB-serial):
 
 - `apps/firmware` — PlatformIO project (Arduino framework) using esp32_smartdisplay + LVGL 9. Board JSONs are a git submodule at `apps/firmware/boards` (clone with `--recurse-submodules`). Copy `include/secrets.example.h` to `include/secrets.h` (gitignored) before building.
-- `apps/api` — Elysia server on the Node adapter (`@elysiajs/node`), TypeScript, port 3000. Serves `GET /schedule` (today's Google Calendar events, merged across accounts) for the board, `/api/*` JSON for the admin UI, and the built admin SPA at `/admin`. OAuth tokens + settings live in gitignored `apps/api/data/`.
+- `apps/api` — Elysia server on the Node adapter (`@elysiajs/node`), TypeScript, port 3300. Serves `GET /schedule` (today's Google Calendar events, merged across accounts) for the board, `/api/*` JSON for the admin UI, and the built admin SPA at `/admin`. OAuth tokens + settings live in gitignored `apps/api/data/`.
 - `apps/admin` — Vue 3 + Vite + Tailwind 4 + daisyUI management SPA (accounts, settings, board status, manual sync). Built to static files served by the API.
 
 ## Commands
@@ -24,11 +24,11 @@ Firmware (run from `apps/firmware`; PlatformIO lives in a project-local venv, th
 API (from repo root; Node 24 pinned via `.node-version`, mise-managed):
 
 ```bash
-pnpm dev:api                      # tsx watch, listens on :3000
-pnpm dev:admin                    # Vite dev server, proxies /api and /schedule to :3000
+pnpm dev:api                      # tsx watch, listens on :3300
+pnpm dev:admin                    # Vite dev server, proxies /api and /schedule to :3300
 pnpm build:admin                  # build SPA into apps/admin/dist (served at /admin)
 pnpm --filter api test            # unit tests (node:test) for schedule builder + time helpers
-curl localhost:3000/health        # {"status":"ok"}
+curl localhost:3300/health        # {"status":"ok"}
 ```
 
 Firmware verification = clean build + flash + observing serial log / on-screen behavior.
@@ -37,7 +37,7 @@ Firmware verification = clean build + flash + observing serial log / on-screen b
 
 - `GET /schedule` returns a flat JSON the board renders verbatim: `now`/`start`/`end` are epoch seconds, `time`/`now_label`/`date` are pre-formatted server-side in the configured timezone. The board has **no NTP and no timezone logic** — it anchors its clock to `now` per poll (every 60 s) and uses the last `now_label` for the stale "as of HH:MM" header. Events are pre-sorted, clamped to today, capped (30 timed / 10 all-day), declined-filtered, colored (event override, else calendar color).
 - Google fetches are cached (default 5 min, settable in the admin UI); the schedule itself is rebuilt per request so `now` is always current. Cache also busts on day rollover and via `POST /api/sync`.
-- API env vars: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. The OAuth redirect URI `http://<host>:3000/api/oauth/callback` must be registered on the Google Cloud OAuth client (web application type), and the consent screen must be **In production**, otherwise refresh tokens expire after 7 days.
+- API env vars: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, plus optional `PORT` (default 3300; `apps/admin/vite.config.ts` reads the same var so its proxy follows). The port is baked into the board's `API_BASE_URL` and the OAuth redirect URI, so changing it means reflashing + re-registering. The OAuth redirect URI `http://<host>:3300/api/oauth/callback` must be registered on the Google Cloud OAuth client (web application type), and the consent screen must be **In production**, otherwise refresh tokens expire after 7 days.
 - The admin UI has no auth — LAN-only by design; never port-forward the API.
 - Firmware: the HTTP fetch task (`src/net/schedule_client.cpp`) is pinned to core 0 and hands data to the UI via a mutex + fresh flag — never call LVGL from it. LVGL runs on core 1 with `loop()`.
 

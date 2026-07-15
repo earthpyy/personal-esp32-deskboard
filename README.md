@@ -28,7 +28,7 @@ cp include/secrets.example.h include/secrets.h
 Then edit `include/secrets.h`:
 
 - `WIFI_SSID` / `WIFI_PASS` — your WiFi network (2.4 GHz; the ESP32 can't see 5 GHz).
-- `API_BASE_URL` — where `apps/api` runs, e.g. `http://192.168.1.10:3000` (no trailing slash).
+- `API_BASE_URL` — where `apps/api` runs, e.g. `http://192.168.1.10:3300` (no trailing slash).
 
 The build fails with a missing-header error until this file exists. Changing any value means reflashing (`pio run -t upload`).
 
@@ -60,10 +60,13 @@ If the screen stays blank or colors/mirroring look wrong, flash one of the sibli
 ## API
 
 ```bash
-pnpm dev:api                      # tsx watch on :3000
-curl localhost:3000/health        # {"status":"ok"}
+pnpm dev:api                      # tsx watch on :3300
+curl localhost:3300/health        # {"status":"ok"}
 pnpm --filter api test            # unit tests (schedule builder + time helpers)
+PORT=9000 pnpm dev:api            # override the port (default 3300)
 ```
+
+`PORT` also works from `apps/api/.env`. Changing it means updating `API_BASE_URL` in the firmware's `secrets.h` (and reflashing) plus the redirect URI on the Google OAuth client. `pnpm dev:admin` reads the same `PORT` to point its proxy at the API.
 
 ### Google Calendar credentials (`.env`)
 
@@ -74,13 +77,13 @@ cd apps/api
 cp .env.example .env              # then fill in the two values
 ```
 
-To get the values: create a Google Cloud project → enable the Calendar API → create an OAuth **web application** client with redirect URI `http://<server>:3000/api/oauth/callback` → set the consent screen to **In production** (in Testing mode, refresh tokens expire every 7 days). Then open `http://<server>:3000/admin` and connect your Google accounts from the Accounts page. Tokens and settings land in gitignored `apps/api/data/`.
+To get the values: create a Google Cloud project → enable the Calendar API → create an OAuth **web application** client with redirect URI `http://<server>:3300/api/oauth/callback` → set the consent screen to **In production** (in Testing mode, refresh tokens expire every 7 days). Then open `http://<server>:3300/admin` and connect your Google accounts from the Accounts page. Tokens and settings land in gitignored `apps/api/data/`.
 
 The admin UI has no auth — it's LAN-only by design. Do not port-forward the API.
 
 ## Admin UI
 
 ```bash
-pnpm dev:admin                    # Vite dev server, proxies /api and /schedule to :3000
+pnpm dev:admin                    # Vite dev server, proxies /api and /schedule to :3300
 pnpm build:admin                  # build into apps/admin/dist (served by the API at /admin)
 ```
