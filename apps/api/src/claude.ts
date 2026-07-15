@@ -62,9 +62,10 @@ function readToken(configDir: string): OAuthToken | null {
   }
 }
 
-interface UsageWindow {
+export interface UsageWindow {
   utilization: number
-  resets_at: string
+  // null while the window is idle — nothing has run in it, so no reset is scheduled
+  resets_at: string | null
 }
 
 interface UsageLimit {
@@ -73,19 +74,19 @@ interface UsageLimit {
   percent: number
 }
 
-interface UsageResponse {
+export interface UsageResponse {
   five_hour?: UsageWindow
   seven_day?: UsageWindow
   limits?: UsageLimit[]
 }
 
-interface RawLimit {
+export interface RawLimit {
   percent: number
   severity: Severity
-  resetsAt: number // epoch ms
+  resetsAt?: number // epoch ms; absent while the window is idle
 }
 
-interface RawAccount {
+export interface RawAccount {
   id: string
   label: string
   available: boolean
@@ -102,7 +103,7 @@ function severityFromPercent(p: number): Severity {
 
 // The top-level window carries the canonical utilization + reset; `limits[]`
 // carries the server's severity for the same window (matched by kind).
-function mapWindow(
+export function mapWindow(
   data: UsageResponse,
   key: 'five_hour' | 'seven_day',
   kind: string,
@@ -112,10 +113,16 @@ function mapWindow(
   const percent = Math.round(window.utilization)
   const severity = (data.limits?.find((l) => l.kind === kind)?.severity as Severity)
     ?? severityFromPercent(percent)
+  return { percent, severity, resetsAt: parseResetsAt(window.resets_at) }
+}
+
+function parseResetsAt(iso: string | null): number | undefined {
+  if (!iso) return undefined
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) return undefined
   // resets land on HH:MM:59.9xx; round to the nearest minute so the label reads
   // "20:50", not "20:49"
-  const resetsAt = Math.round(Date.parse(window.resets_at) / 60_000) * 60_000
-  return { percent, severity, resetsAt }
+  return Math.round(ms / 60_000) * 60_000
 }
 
 async function fetchAccountUsage(account: ClaudeAccountConfig): Promise<RawAccount> {
@@ -151,8 +158,8 @@ async function fetchAccountUsage(account: ClaudeAccountConfig): Promise<RawAccou
 export interface ClaudeLimit {
   percent: number
   severity: Severity
-  resets: number // epoch seconds
-  resets_label: string
+  resets?: number // epoch seconds; absent while the window is idle
+  resets_label: string // empty while the window is idle; the board renders it blank
 }
 
 export interface ClaudeAccount {
@@ -202,15 +209,18 @@ function weekdayTime(epochMs: number, timezone: string): string {
 }
 
 function toLimit(limit: RawLimit, timezone: string, weekly: boolean): ClaudeLimit {
+  const { resetsAt } = limit
+  if (resetsAt === undefined)
+    return { percent: limit.percent, severity: limit.severity, resets_label: '' }
   return {
     percent: limit.percent,
     severity: limit.severity,
-    resets: Math.floor(limit.resetsAt / 1000),
-    resets_label: weekly ? weekdayTime(limit.resetsAt, timezone) : hhmm(limit.resetsAt, timezone),
+    resets: Math.floor(resetsAt / 1000),
+    resets_label: weekly ? weekdayTime(resetsAt, timezone) : hhmm(resetsAt, timezone),
   }
 }
 
-function buildUsage(accounts: RawAccount[], timezone: string, nowMs: number): ClaudeUsage {
+export function buildUsage(accounts: RawAccount[], timezone: string, nowMs: number): ClaudeUsage {
   return {
     now: Math.floor(nowMs / 1000),
     now_label: hhmm(nowMs, timezone),
