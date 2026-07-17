@@ -8,6 +8,7 @@
         <div role="tablist" class="tabs tabs-box">
           <router-link to="/" class="tab" exact-active-class="tab-active">Calendars</router-link>
           <router-link to="/claude" class="tab" exact-active-class="tab-active">Claude</router-link>
+          <router-link to="/todoist" class="tab" exact-active-class="tab-active">Todoist</router-link>
           <router-link to="/settings" class="tab" exact-active-class="tab-active">Settings</router-link>
           <router-link to="/board" class="tab" exact-active-class="tab-active">Status</router-link>
         </div>

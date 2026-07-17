@@ -5,6 +5,7 @@ export interface Settings {
   timezone: string
   cacheTtlMinutes: number
   claudeCacheTtlMinutes: number
+  todoistCacheTtlMinutes: number
   lunchEnabled: boolean
   lunchStart: string // "HH:MM" local time
   lunchEnd: string // "HH:MM" local time
@@ -14,6 +15,7 @@ const DEFAULTS: Settings = {
   timezone: 'Asia/Bangkok',
   cacheTtlMinutes: 5,
   claudeCacheTtlMinutes: 5,
+  todoistCacheTtlMinutes: 5,
   lunchEnabled: true,
   lunchStart: '12:00',
   lunchEnd: '13:00',

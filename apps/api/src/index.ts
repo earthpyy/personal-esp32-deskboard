@@ -13,6 +13,13 @@ import {
 } from './claudeAccounts.js'
 import { OAUTH_SCOPES, emailForCode, oauthClient } from './google.js'
 import { getSettings, saveSettings } from './settings.js'
+import {
+  completeTodoistTask,
+  getTodoistBoard,
+  listFilters,
+  todoistSyncResult,
+} from './todoist.js'
+import { getTodoistConfig, saveTodoistConfig } from './todoistConfig.js'
 
 // optional .env next to package.json (see .env.example); real env vars still win
 const envPath = path.resolve(import.meta.dirname, '../.env')
@@ -48,6 +55,52 @@ const app = new Elysia({ adapter: node() })
       ?? request.headers.get('x-forwarded-for')
       ?? 'unknown'
     return getClaudeUsage()
+  })
+  .get('/todoist', ({ request }) => {
+    boardStatus.lastPollAt = Date.now()
+    boardStatus.lastPollIp = request.headers.get('x-board-ip')
+      ?? request.headers.get('x-forwarded-for')
+      ?? 'unknown'
+    return getTodoistBoard()
+  })
+  // board → API write path (the only one): complete a task, then the follow-up
+  // /todoist poll returns the list without it. Errors surface so the board can
+  // restore the row.
+  .post('/todoist/complete', async ({ body }) => {
+    try {
+      const ok = await completeTodoistTask(body.id)
+      return { ok }
+    } catch (err) {
+      return new Response(err instanceof Error ? err.message : String(err), { status: 502 })
+    }
+  }, {
+    body: t.Object({ id: t.String() }),
+  })
+  .get('/api/todoist', () => getTodoistBoard())
+  .get('/api/todoist/config', () => {
+    // the token lives in TODOIST_TOKEN (env); the admin only reports whether it's set
+    return { hasToken: Boolean(process.env.TODOIST_TOKEN?.trim()), activeFilterId: getTodoistConfig().activeFilterId }
+  })
+  .put('/api/todoist/config', async ({ body }) => {
+    saveTodoistConfig({ activeFilterId: body.activeFilterId.trim() })
+    await getTodoistBoard(true) // warm the cache so the board updates immediately
+    return { ok: true }
+  }, {
+    body: t.Object({ activeFilterId: t.String() }),
+  })
+  .get('/api/todoist/filters', async () => {
+    const token = process.env.TODOIST_TOKEN?.trim()
+    if (!token) return []
+    try {
+      return await listFilters(token)
+    } catch (err) {
+      return new Response(err instanceof Error ? err.message : String(err), { status: 502 })
+    }
+  })
+  .get('/api/todoist/sync', () => todoistSyncResult())
+  .post('/api/todoist/sync', async () => {
+    await getTodoistBoard(true)
+    return todoistSyncResult()
   })
   .get('/api/claude', () => getClaudeUsage())
   .get('/api/claude/sync', () => claudeSyncResult())
@@ -126,7 +179,7 @@ const app = new Elysia({ adapter: node() })
   })
   .get('/api/sync', () => lastSyncResult())
   .post('/api/sync', async () => {
-    await Promise.all([getSchedule(true), getClaudeUsage(true)])
+    await Promise.all([getSchedule(true), getClaudeUsage(true), getTodoistBoard(true)])
     return lastSyncResult()
   })
   .get('/api/settings', () => getSettings())
@@ -135,6 +188,7 @@ const app = new Elysia({ adapter: node() })
       timezone: t.String(),
       cacheTtlMinutes: t.Number({ minimum: 1 }),
       claudeCacheTtlMinutes: t.Number({ minimum: 1 }),
+      todoistCacheTtlMinutes: t.Number({ minimum: 1 }),
       lunchEnabled: t.Boolean(),
       lunchStart: t.String(),
       lunchEnd: t.String(),

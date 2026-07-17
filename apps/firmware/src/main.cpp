@@ -5,6 +5,7 @@
 #include "net/claude_client.h"
 #include "net/net.h"
 #include "net/schedule_client.h"
+#include "net/todoist_client.h"
 #include "ui/touch_calibration.h"
 #include "ui/ui.h"
 
@@ -25,6 +26,7 @@ void setup()
   net_init();
   schedule_client_init();
   claude_client_init();
+  todoist_client_init();
   ui_init();
 }
 

@@ -5,6 +5,7 @@ import { api } from '../api.js'
 const timezone = ref('')
 const cacheTtlMinutes = ref(5)
 const claudeCacheTtlMinutes = ref(5)
+const todoistCacheTtlMinutes = ref(5)
 const lunchEnabled = ref(true)
 const lunchStart = ref('12:00')
 const lunchEnd = ref('13:00')
@@ -16,6 +17,7 @@ onMounted(async () => {
     timezone: string
     cacheTtlMinutes: number
     claudeCacheTtlMinutes: number
+    todoistCacheTtlMinutes: number
     lunchEnabled: boolean
     lunchStart: string
     lunchEnd: string
@@ -23,6 +25,7 @@ onMounted(async () => {
   timezone.value = s.timezone
   cacheTtlMinutes.value = s.cacheTtlMinutes
   claudeCacheTtlMinutes.value = s.claudeCacheTtlMinutes
+  todoistCacheTtlMinutes.value = s.todoistCacheTtlMinutes
   lunchEnabled.value = s.lunchEnabled
   lunchStart.value = s.lunchStart
   lunchEnd.value = s.lunchEnd
@@ -38,6 +41,7 @@ async function save() {
         timezone: timezone.value,
         cacheTtlMinutes: cacheTtlMinutes.value,
         claudeCacheTtlMinutes: claudeCacheTtlMinutes.value,
+        todoistCacheTtlMinutes: todoistCacheTtlMinutes.value,
         lunchEnabled: lunchEnabled.value,
         lunchStart: lunchStart.value,
         lunchEnd: lunchEnd.value,
@@ -61,6 +65,8 @@ async function save() {
         <input id="ttl" v-model.number="cacheTtlMinutes" type="number" min="1" class="input w-full" />
         <label class="label" for="claude-ttl">Claude usage cache TTL (minutes)</label>
         <input id="claude-ttl" v-model.number="claudeCacheTtlMinutes" type="number" min="1" class="input w-full" />
+        <label class="label" for="todoist-ttl">Todoist cache TTL (minutes)</label>
+        <input id="todoist-ttl" v-model.number="todoistCacheTtlMinutes" type="number" min="1" class="input w-full" />
         <label class="label mt-2" for="lunch-enabled">
           <input id="lunch-enabled" v-model="lunchEnabled" type="checkbox" class="checkbox checkbox-sm" />
           Show lunch break divider (when free)

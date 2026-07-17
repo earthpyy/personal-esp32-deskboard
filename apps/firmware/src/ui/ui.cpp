@@ -3,6 +3,7 @@
 #include "page_claude.h"
 #include "page_monitor.h"
 #include "page_schedule.h"
+#include "page_todoist.h"
 
 #include <lvgl.h>
 
@@ -30,6 +31,7 @@ struct TabDef
 
 static const TabDef tabs[] = {
     {ICON_CALENDAR, &font_calendar, page_schedule_build, page_schedule_set_active},
+    {LV_SYMBOL_LIST, nullptr, page_todoist_build, page_todoist_set_active},
     {ICON_CLAUDE, &font_claude, page_claude_build, page_claude_set_active},
     {LV_SYMBOL_CHARGE, nullptr, page_monitor_build, page_monitor_set_active},
 };
