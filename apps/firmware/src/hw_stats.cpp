@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <esp_freertos_hooks.h>
+#include <esp_heap_caps.h>
 
 // CPU % is an estimate: the Arduino core doesn't enable FreeRTOS runtime
 // stats, so we count idle-task iterations per core and self-calibrate against
@@ -54,6 +55,23 @@ void hw_stats_sample(HwStats *out)
   out->heap_min_free = esp_get_minimum_free_heap_size();
   out->heap_total = ESP.getHeapSize();
   out->uptime_s = now / 1000;
+}
+
+void hw_stats_log_heap()
+{
+  // log every 30 s so serial isn't flooded
+  static uint32_t last_log_ms = 0;
+  auto const now = millis();
+  if (last_log_ms != 0 && now - last_log_ms < 30000)
+    return;
+  last_log_ms = now;
+
+  uint32_t const free_now = esp_get_free_heap_size();
+  uint32_t const free_min = esp_get_minimum_free_heap_size();
+  uint32_t const largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  // frag% = how much of free heap is NOT in the largest contiguous block
+  float const frag_pct = free_now > 0 ? 100.0f * (1.0f - (float)largest / free_now) : 0.0f;
+  log_i("[heap] free=%u min=%u largest=%u frag=%.0f%%", free_now, free_min, largest, frag_pct);
 }
 
 void hw_stats_chip_info(ChipInfo *out)

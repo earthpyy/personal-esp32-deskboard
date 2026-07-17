@@ -22,3 +22,8 @@ struct ChipInfo
 void hw_stats_init();
 void hw_stats_sample(HwStats *out);
 void hw_stats_chip_info(ChipInfo *out);
+
+// Phase 1 heap instrumentation: logs free / min-free / largest-free-block over
+// serial. The gap between free and largest-free-block is the fragmentation
+// signal. Self-throttled — safe to call every loop().
+void hw_stats_log_heap();

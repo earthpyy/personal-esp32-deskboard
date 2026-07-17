@@ -51,7 +51,8 @@ static bool fetch(ClaudeData *out)
     return false;
   }
   JsonDocument doc;
-  auto const err = deserializeJson(doc, http.getString());
+  // stream straight off the socket: no full-body String allocation
+  auto const err = deserializeJson(doc, http.getStream());
   http.end();
   if (err)
   {
@@ -104,8 +105,9 @@ void claude_client_init()
   shared = new ClaudeData();
   scratch = new ClaudeData();
   data_mutex = xSemaphoreCreateMutex();
-  // core 0: LVGL + the Arduino loop own core 1
-  xTaskCreatePinnedToCore(fetch_task, "claude_fetch", 8192, nullptr, 1, nullptr, 0);
+  // core 0: LVGL + the Arduino loop own core 1. 4 KB stack: measured peak use
+  // is ~2 KB (JSON is streamed off the socket into the heap, not the stack).
+  xTaskCreatePinnedToCore(fetch_task, "claude_fetch", 4096, nullptr, 1, nullptr, 0);
 }
 
 bool claude_client_take_fresh(ClaudeData *out)

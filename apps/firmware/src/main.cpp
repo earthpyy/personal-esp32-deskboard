@@ -38,6 +38,7 @@ void loop()
   lv_tick_inc(now - lv_last_tick);
   lv_last_tick = now;
   auto const wait_ms = lv_timer_handler();
+  hw_stats_log_heap(); // Phase 1: periodic heap + fragmentation dump (self-throttled)
   // sleep until LVGL needs to run again so the idle task gets time on this
   // core (required for the CPU % estimate); cap to keep input responsive
   delay(wait_ms == LV_NO_TIMER_READY ? 5 : (wait_ms > 10 ? 10 : wait_ms));
