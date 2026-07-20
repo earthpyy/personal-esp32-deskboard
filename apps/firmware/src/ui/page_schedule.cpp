@@ -240,7 +240,9 @@ static void rebuild()
   set_hidden(empty_label, data->event_count > 0 || data->all_day_count > 0 || debug_forced);
 
   lv_label_set_text(date_label, data->date_label);
-  last_focus = -1; // force scroll re-evaluation
+  // last_focus is intentionally NOT reset here: keeping it lets restyle() scroll
+  // only when the focused event actually changes, so an unchanged-content refresh
+  // leaves the user's scroll position (restored in tick_cb) untouched.
 }
 
 static void update_debug()
@@ -347,9 +349,24 @@ static void tick_cb(lv_timer_t *timer)
 {
   if (schedule_client_take_fresh(data))
   {
+    bool const first = !has_data;
     has_data = true;
+    // Preserve the user's scroll across the teardown. rebuild()'s
+    // lv_obj_clean() resets scroll to 0, so without this a poll every 60 s
+    // yanks the list back up even when the day's events are unchanged. On the
+    // first data we still want to snap to the current/next event, so skip the
+    // restore then and let restyle(force) do the scroll.
+    int32_t const saved_scroll = lv_obj_get_scroll_y(list);
     rebuild();
-    restyle(true);
+    if (!first)
+    {
+      lv_obj_update_layout(list);
+      lv_obj_scroll_to_y(list, saved_scroll, LV_ANIM_OFF);
+    }
+    // Restore runs before restyle so a genuine focus change (an event ending)
+    // still scrolls to follow the day, while an unchanged focus keeps the
+    // restored position.
+    restyle(first);
   }
   else if (has_data && tick_count % 30 == 0)
   {
